@@ -1,36 +1,39 @@
-# Part 4 — Advanced Workflows & Team Practices
-**Presenter B · ~80 minutes**
+# Part 4 — Skills, Spec-Kit, Security, MCP & Team Practices
+**Presenter B · ~35 minutes**
+
+> The CV Builder ships with the **full Spec-Kit skill set installed** (`.cursor/skills/speckit-*` — 14 skills) and a worked example at `specs/001-resume-builder/`. That makes Skills and Spec-Kit the headline content of this section, not a closing slide.
 
 ---
 
-## 4.1 Prompt Engineering for Code Tasks (10 min)
+## 4.1 Prompt Engineering for Code Tasks (5 min)
 
 Cursor is only as good as the prompts you give it. These patterns consistently produce better results.
 
 ### The STAR prompt structure for code tasks
 | Component | Purpose | Example |
 |---|---|---|
-| **S**ituation | Current state | "This FastAPI handler does X…" |
-| **T**ask | What you want | "…refactor it to Y…" |
-| **A**pproach | Constraints / preferences | "…using the repository pattern, no new dependencies…" |
-| **R**eference | Files / docs to follow | "…following the style in @src/api/orders.py" |
+| **S**ituation | Current state | "The CV Builder has 7 sections, none for Languages…" |
+| **T**ask | What you want | "…add a Languages section…" |
+| **A**pproach | Constraints / preferences | "…single free-text field, conditional rendering, no new dependencies…" |
+| **R**eference | Files / docs to follow | "…following the pattern in @src/lib/latex-generator.ts::generateSkills and the contracts in @specs/001-resume-builder/spec.md FR-026" |
 
 ### Patterns that consistently work
 
 **Pattern 1: "Match the existing pattern"**
 ```
-"Add pagination to the GET /users endpoint.
-Match the pagination pattern already used in @src/api/products.py"
+"Add a generateLanguages() function to @src/lib/latex-generator.ts.
+Match the contract used by generateSkills exactly (single string in, conditional empty
+output, same itemize/leftmargin block)."
 ```
 This prevents Cursor from inventing its own style.
 
 **Pattern 2: Explicit constraints**
 ```
 "Refactor this function. Constraints:
-- No new pip packages
-- Must remain backward-compatible
-- Keep the public interface identical
-- All functions must have type hints"
+- No new npm packages
+- Must remain backward-compatible (no public API breakage)
+- Keep the file under 200 lines (per Constitution VI in @specs/001-resume-builder/plan.md)
+- Every exported function keeps explicit TypeScript types"
 ```
 
 **Pattern 3: Step-by-step decomposition**
@@ -54,167 +57,157 @@ edge cases, or security concerns I should address before merging?"
 | "Fix the bug" | "The function returns None when the input list is empty. Fix it." |
 | "Add a feature" | "Add email notifications when an order status changes to 'shipped'" |
 | "Make it better" | "Reduce the cyclomatic complexity of this function. Keep behaviour identical." |
-| "Write tests" | "Write pytest tests covering the happy path, invalid input, and auth failure" |
+| "Write tests" | "Write vitest tests covering the happy path, invalid input, and the empty-array case" |
 
-### Demo: iterative prompting
+### Demo: iterative prompting (using the CV Builder)
 ```
-1. Bad prompt → mediocre result
-2. Refined prompt + context → much better result
-3. Follow-up critique → catch issues before review
-```
-
----
-
-## 4.2 Custom Commands & Skills (15 min)
-
-Rules tell Cursor *how to behave*. **Commands** and **Skills** tell it *what workflows to run* — they are reusable, invocable prompt templates committed alongside your code.
-
-### Custom Commands
-Cursor allows you to define slash commands in `.cursor/commands/`. Each command is a `.md` file whose contents become the prompt when invoked.
-
-```
-your-project/
-└── .cursor/
-    └── commands/
-        ├── pr-description.md
-        ├── review-security.md
-        └── explain-for-junior.md
-```
-
-Invoke from Chat or Agent mode: `/pr-description`, `/review-security`, etc.
-
-**Example: `pr-description.md`**
-```markdown
-Look at the staged changes in @Git diff.
-
-Write a pull request description with:
-- A one-sentence summary of what changed and why
-- A "Changes" section listing each modified component
-- A "Testing" section describing how to verify the change
-- Any breaking changes or migration notes
-
-Tone: technical but concise. Audience: the team's engineers.
-```
-
-**Example: `review-security.md`**
-```markdown
-Review the selected code for security vulnerabilities.
-Check specifically for:
-- Injection vulnerabilities (SQL, command, LDAP)
-- Authentication and authorisation gaps
-- Sensitive data in logs or responses
-- Insecure use of cryptographic functions
-- Missing input validation at trust boundaries
-
-Output as a numbered list. For each issue: severity (HIGH/MED/LOW), 
-location (file:line), description, and a concrete fix.
-```
-
-**Example: `explain-for-junior.md`**
-```markdown
-Explain the selected code to a junior engineer who is unfamiliar with this codebase.
-Avoid jargon. Use an analogy if helpful. Include:
-- What this code is responsible for
-- Why it exists (the problem it solves)
-- What a reader needs to know to safely modify it
-```
-
-**Key benefits:**
-- Standardizes how the team asks Cursor for common tasks
-- Reduces prompt re-typing for frequent workflows
-- Commands go through PR review — they are team decisions, not personal preferences
-
----
-
-### Skills — Reusable Agent Capabilities
-
-Skills are larger, structured prompt files that define how an agent should approach a **category of task**. Think of them as agent personas for specific engineering activities.
-
-```
-.cursor/
-└── skills/
-    ├── incident-response.md
-    ├── api-design.md
-    └── db-migration.md
-```
-
-Invoke a skill explicitly by referencing it:
-```
-"Follow the process in @.cursor/skills/api-design.md to design the new
-payments API. Start with the interface, then the contract, then stub the implementation."
-```
-
-**Example: `api-design.md`**
-```markdown
-# API Design Skill
-
-When asked to design an API, follow these steps in order:
-
-1. **Clarify** — list any ambiguities in requirements and ask before proceeding
-2. **Contract first** — define request/response shapes as Pydantic models
-3. **Error cases** — enumerate all error conditions and their HTTP status codes
-4. **Examples** — write 3 example request/response pairs
-5. **Stub** — implement skeleton route handlers with TODO bodies
-6. **Review** — self-critique the design for consistency with @src/api/ patterns
-
-Do not write implementation logic until the contract is approved.
-```
-
-**Example: `incident-response.md`**
-```markdown
-# Incident Response Skill
-
-When given a production error or alert:
-1. Identify the affected component from the stack trace or logs
-2. Search @Codebase for the relevant code paths
-3. Propose a short-term mitigation (feature flag, rollback trigger, safe default)
-4. Propose a root-cause fix with tests
-5. List any other code paths with the same vulnerability
-6. Draft a 5-line incident summary for posting in the incident channel
-```
-
-### Standardizing agent output with Commands + Skills + Rules
-
-The three layers work together:
-
-```
-Rules     → always-on style and constraint enforcement
-Skills    → task-type workflows (how to approach design, debugging, review)
-Commands  → one-click invocation of specific recurring tasks
-```
-
-**Demo**
-```
-1. Show /pr-description on a real diff — consistent, structured PR every time
-2. Show /review-security on a route handler — systematic security check in seconds
-3. Show invoking skills/api-design.md to design a new endpoint from scratch
-4. Show how a new team member gets all of this for free by cloning the repo
+1. Bad prompt: "Add a Languages section" → mediocre result (invents a new shape, wrong file,
+   no test coverage, may add a category structure not in the spec)
+2. STAR prompt: "The CV Builder has no Languages section today.
+   Add generateLanguages() to @src/lib/latex-generator.ts matching the conditional contract
+   used by generateSkills (single string, return '' when empty, same itemize block).
+   Add vitest cases in @tests/unit/latex-generator.test.ts matching the generateSkills describe()
+   block. Do not add a new tab yet — only the generator + tests." → correct result
+3. Follow-up critique: "What edge cases does generateLanguages not handle? Does whitespace-only
+   input go through cleanly?" → catches the trim() gap if missing
 ```
 
 ---
 
-## 4.3 MCP — Model Context Protocol (10 min)
+## 4.2 Skills — The CV Builder's Worked Example (10 min)
 
-MCP extends Cursor with tools that let the AI interact with external systems.
+Rules tell Cursor *how to behave*. **Skills** tell it *what workflows to run* — they are reusable, invocable prompt templates committed alongside your code. The CV Builder ships with 14 skills already installed, and this section uses them as the worked example.
 
-### What MCP enables
-Instead of just reading/writing files, the agent can:
-- Query your database
-- Call internal APIs
-- Search Confluence / Notion / Linear
-- Read and create GitHub issues and PRs
-- Read and transition Jira tickets
+### What's in `cv-builder/.cursor/skills/`
 
-### Architecture
+```
+.cursor/skills/
+├── speckit-constitution/SKILL.md      Define project principles & gates
+├── speckit-specify/SKILL.md           Generate spec.md + requirements checklist from a feature description
+├── speckit-clarify/SKILL.md           Resolve [NEEDS CLARIFICATION] markers via 3-max question batches
+├── speckit-plan/SKILL.md              Generate plan.md + research.md + data-model.md + contracts/
+├── speckit-tasks/SKILL.md             Decompose the plan into phased, parallel-tagged tasks
+├── speckit-implement/SKILL.md         Execute tasks in dependency order, ticking the checklist
+├── speckit-analyze/SKILL.md           Re-analyse an existing spec for gaps
+├── speckit-checklist/SKILL.md         Produce a quality checklist for any artifact
+├── speckit-taskstoissues/SKILL.md     Push tasks.md into GitHub issues for distributed work
+├── speckit-git-initialize/SKILL.md    Initialise the spec-kit git extension
+├── speckit-git-feature/SKILL.md       Create a feature branch before /speckit-specify
+├── speckit-git-commit/SKILL.md        Conventional commit per task
+├── speckit-git-validate/SKILL.md      Validate branch + commit shape against extension config
+└── speckit-git-remote/SKILL.md        Push to remote and open PR with the spec attached
+```
+
+Each skill is a `SKILL.md` file with frontmatter (`name`, `description`, `compatibility`, `metadata`) and a structured prompt body. Invoke them as slash commands: `/speckit-specify`, `/speckit-plan`, etc.
+
+### Anatomy of a skill — `speckit-specify`
+
+The skill has four sections:
+
+1. **User Input** — captures the user's description verbatim
+2. **Pre-Execution Checks** — reads `.specify/extensions.yml` for hooks (e.g., git-feature creates a branch before the spec)
+3. **Outline** — the step-by-step procedure: name the feature, create the directory, populate `spec.md` from the template, run a quality checklist, present clarifications if any markers remain
+4. **Quick Guidelines + Section Requirements** — output rules (focus on WHAT/WHY, not HOW; max 3 `[NEEDS CLARIFICATION]` markers; measurable success criteria)
+
+The key idea: **skills are agent workflows committed alongside code**, in plain Markdown. They go through PR review like any other team decision.
+
+### Demo: invoke the skill chain (using the CV Builder)
+
+```
+Cmd+L → Agent tab →
+
+/speckit-specify Add a Languages section to the resume builder.
+The section accepts a single free-text field (e.g., "English (native), Spanish (B2)") and
+appears in the PDF between Skills and Projects, omitted when empty.
+
+→ produces specs/002-languages-section/spec.md + checklists/requirements.md
+→ presents up to 3 clarification questions
+
+/speckit-plan
+→ produces plan.md, research.md, data-model.md, contracts/
+
+/speckit-tasks
+→ produces tasks.md decomposed by user story, with [P]arallel tags
+
+/speckit-implement
+→ executes tasks in dependency order, ticks the checklist as it goes
+→ runs npm test at the end
+```
+
+Walk through the diff with attendees — every file change traces back to a numbered task, which traces back to an FR in the spec.
+
+### Standardising agent output with Rules + Skills
+
+The two layers work together:
+
+```
+Rules     → always-on style and constraint enforcement (.cursor/rules/specify-rules.mdc)
+Skills    → invocable workflows for whole categories of work (.cursor/skills/speckit-*)
+```
+
+> **Commands are being folded into skills.** Existing `.cursor/commands/*.md` still work but new repeatable workflows should be authored as skills. The CV Builder skips commands entirely.
+
+### Tips for authoring your own skills
+
+- Start by capturing a workflow you re-type often. Paste your usual prompt into `SKILL.md`, add steps, commit.
+- Use `frontmatter.description` carefully — it determines when agent-requested skills auto-trigger.
+- Reference other skills with `EXECUTE_COMMAND: {command}` for chains (the spec-kit skills do this).
+- Test the skill end-to-end in a fresh chat before committing.
+
+---
+
+## 4.3 Spec-Kit Deeper — Read the Worked Example (5 min)
+
+We already invoked the speckit-* skills in 4.2 to add a Languages section. Now zoom into what's already there: `specs/001-resume-builder/` is the complete artifact set produced by Spec-Kit for the CV Builder itself.
+
+```
+specs/001-resume-builder/
+├── spec.md              ~25 KB — 6 user stories, 32 functional requirements,
+│                        9 success criteria, 9 clarifications, edge cases
+├── plan.md              Constitution Check (6 principles), Technical Context,
+│                        Project Structure, post-design re-check
+├── research.md          R-001…R-005 — every "why this library" decision
+├── data-model.md        Per-entity field-to-LaTeX-argument mapping table
+├── contracts/           latex-generation.md — the escape contract
+├── checklists/
+│   └── requirements.md  Quality gate produced by /speckit-specify
+├── tasks.md             45 tasks across 9 phases, [P]arallel tags,
+│                        traceable back to user stories
+└── quickstart.md        npm install → npm run dev verification steps
+```
+
+**What this gives you in practice:**
+
+- **New team members** read `spec.md` and `plan.md` instead of reverse-engineering the code.
+- **Cursor itself** reads them too — `specify-rules.mdc` makes `plan.md` always-on context.
+- **The constitution** (in plan.md) is what stops Cursor from inventing helper layers — every chat is reminded that files must stay under 200 lines, that there's no state-management library, that pure functions go in `src/lib/`.
+- **Tasks** carry through to commits — every PR diff traces back to a task ID, which traces back to an FR, which traces back to a user story.
+
+### When to use Spec-Kit
+
+| Use Spec-Kit | Skip it |
+|---|---|
+| Greenfield feature spanning multiple files | One-line bug fix |
+| Adding a section/module that follows an existing pattern | Local refactor with no behaviour change |
+| Anything you'd normally write a design doc for | Spike / throwaway exploration |
+| Brownfield work where you want to capture conventions | Already-spec'd work mid-implementation |
+
+> **BMAD** ([docs.bmad-method.org](https://docs.bmad-method.org)) is a related framework that brings full-lifecycle personas (@analyst, @pm, @architect, @dev, @qa). Heavier than Spec-Kit; useful for cross-functional initiatives. Same philosophy — externalise the workflow into committed artefacts.
+
+---
+
+## 4.4 MCP — Model Context Protocol (5 min)
+
+MCP extends Cursor with tools that let the AI interact with external systems — GitHub issues/PRs, Jira tickets, Confluence pages, Postgres queries, internal APIs, etc. MCP servers are lightweight local processes that expose tools the AI can call.
+
 ```
 Cursor (AI) ←→ MCP Server ←→ External System
 ```
-MCP servers are lightweight local processes that expose tools the AI can call.
 
-### Setting up MCP in Cursor
-`Cursor Settings` → `MCP` → Add server
+### Setting up an MCP server
 
-Example: GitHub MCP server
+`Cursor Settings` → `MCP` → Add server. Example: GitHub.
+
 ```json
 {
   "mcpServers": {
@@ -222,440 +215,192 @@ Example: GitHub MCP server
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-github"],
       "env": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "<YOUR_TOKEN>"
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "<read-only, fine-grained, scoped to one repo>"
       }
     }
   }
 }
 ```
 
-### Popular MCP servers
+### Workflow example (CV Builder)
+
+```
+Cmd+L → Agent tab →
+
+"Look at the open GitHub issues on the cv-builder repo. Pick the one tagged 'good first issue'.
+Read it, reproduce locally, fix the bug, add a vitest regression case, commit, and open a PR."
+```
+
+This is the full loop — issue → reproduction → fix → test → PR — without leaving Cursor.
+
+### Other useful servers
 
 | Server | What it does |
 |---|---|
-| `@modelcontextprotocol/server-github` | Read/create issues, PRs, files |
-| `@modelcontextprotocol/server-postgres` | Query PostgreSQL databases |
-| `mcp-server-jira` | Read/create Jira tickets, transitions, comments |
-| `mcp-server-confluence` | Read Confluence pages as context |
-| `@modelcontextprotocol/server-brave-search` | Web search via Brave |
-| `@notionhq/notion-mcp-server` | Read/write Notion pages |
+| `@modelcontextprotocol/server-github` | Issues, PRs, files |
+| `mcp-server-jira` | Tickets, transitions, comments |
+| `mcp-server-confluence` | Pages as context |
+| `@modelcontextprotocol/server-postgres` | Read-only queries |
+| `@notionhq/notion-mcp-server` | Notion docs |
 
-### Real workflow examples
+### Lean MCP setup
 
-**Example 1: Jira ticket → implementation**
-```
-"Read Jira ticket ENG-1024. Pull the acceptance criteria from the ticket
-and the relevant Confluence design doc it links to.
-Implement the feature following our patterns in @src/ and @.cursor/rules/"
-```
-This is the full loop: ticket → design doc → code → tests, without leaving Cursor.
-
-**Example 2: Bug from GitHub issue to PR**
-```
-Cmd+L → Agent tab →
-"Look at GitHub issue #342. Reproduce the reported bug, find the root cause
-in the codebase, write a fix with a regression test, and open a PR."
-```
-
-**Example 3: Confluence architecture context**
-```
-"Read the Confluence page 'Event Bus Architecture' before implementing
-this new event subscriber. Match the patterns described there."
-```
-
-### Demo
-```
-1. Show MCP config in Cursor Settings
-2. Cmd+L → Agent tab → ask it to read a GitHub issue
-3. Show it pulling the issue description into context automatically
-```
-
-### Security note
-> MCP servers run locally with your credentials. Only use servers from trusted sources. Treat the access token scopes with least-privilege principles.
+- ~40-tool soft limit before context bloat — disable servers you're not using
+- Tokens via env vars; commit a `.cursor/mcp.json.example` with placeholders only
+- Read-only / fine-grained / repo-scoped tokens by default
+- Audit community server source before adding — they run with your credentials
 
 ---
 
-## 4.4 Team Conventions & Sharing Cursor Config (10 min)
+## 4.5 Security & Trust (5 min)
 
-Getting the whole team productive requires sharing configuration.
+> **50% of attendees** flagged security as a concern. The fundamentals matter — and the CV Builder gives us very concrete examples since it runs untrusted text through a LaTeX compiler in the user's own browser.
 
-### What to commit to git
-
-```
-your-repo/
-└── .cursor/
-    ├── rules/
-    │   ├── general.mdc      ✓ commit
-    │   ├── python.mdc       ✓ commit
-    │   └── testing.mdc      ✓ commit
-    ├── commands/
-    │   ├── pr-description.md ✓ commit
-    │   └── review-security.md ✓ commit
-    └── skills/
-        └── api-design.md     ✓ commit
-```
-
-**Do commit:** `.cursor/rules/`, `.cursor/commands/`, `.cursor/skills/`  
-**Do not commit:** `.cursor/mcp.json` if it contains tokens; use environment variables instead
-
-### Onboarding new engineers
-Add to your project's README or onboarding doc:
-```markdown
-## Cursor Setup
-
-1. Install Cursor from https://cursor.sh
-2. Open this repo — codebase index will build automatically (~5 min)
-3. Review .cursor/rules/ to understand our AI coding conventions
-4. Set Privacy Mode if required for this project (Cursor Settings → Privacy Mode)
-```
-
-### Creating a team rule library
-- Rules are code — they go through PR review
-- Add a comment at the top with the rationale
-- Use a naming convention: `domain.mdc` (`api.mdc`, `db.mdc`, `testing.mdc`)
-
-### Managing PR size with AI workflows
-
-> One attendee's ask: "A polite way to explain that 5000+ line PRs are not normal and can be avoided."
-
-AI-assisted development makes large PRs worse, not better — the agent can generate 1000 lines in minutes, but review time scales with PR size, not generation time.
-
-**The antidote: scope the agent, scope the PR.**
-
-| Practice | How |
-|---|---|
-| One agent task = one PR | Give the agent a focused scope; commit and PR when done |
-| Use worktrees for parallel features | Each worktree → separate branch → separate PR |
-| Use Plan mode for big features | Break the plan into phases; each phase = one PR |
-| `/pr-description` command | Forces you to articulate what changed — if you can't summarize it in 3 bullets, the PR is too big |
-| Background agents for tests | Run test generation in a separate PR from feature code |
-
-**Team convention to add to your rules:**
-```markdown
-# In .cursor/rules/general.mdc
-- When implementing features, break work into PRs of ≤500 lines of meaningful changes.
-- Each PR should be independently reviewable and deployable.
-- If a task would produce >500 lines, ask me to help split it into phases first.
-```
-
-### Evolving rules over time
-When you notice Cursor generating something wrong:
-```
-1. Identify the pattern that was wrong
-2. Add a rule to .cursor/rules/ to prevent it
-3. Commit the rule with a short explanation
-```
-Rules are **living documentation** of your team's decisions.
-
----
-
-## 4.5 Privacy, Security & Trust (15 min)
-
-> **50% of attendees** are concerned about security. 33% are quite/very concerned. This is not a sidebar — it's a core topic.
-
-### What Cursor knows about your code
-
-Before anything else, engineers need to understand the data flow:
+### What Cursor sees
 
 | Plan | What leaves your machine | Retained? |
 |---|---|---|
-| Free / Pro (default) | Code context sent to model provider (OpenAI/Anthropic) | Up to 30 days |
-| Pro + Privacy Mode | Code routed through Cursor's servers only, not to model provider | Never |
+| Free / Pro (default) | Code context sent to model provider | Up to 30 days |
+| Pro + Privacy Mode | Routed through Cursor only, not to provider | Never |
 | Business | Privacy Mode on by default, SOC 2 Type II | Never |
 
-Enable per project: `Cursor Settings` → `Privacy Mode`
+> If you wouldn't paste it into a public ChatGPT window, enable Privacy Mode (per project: `Cursor Settings` → `Privacy Mode`) or use the Business plan.
 
-> **Rule of thumb:** If you wouldn't paste it into a public ChatGPT window, enable Privacy Mode or Business plan before working with it in Cursor.
+### `.cursorignore` for the CV Builder
 
-### Working with Cursor in the Nike environment
-
-> Directly addresses the poll question: "How to work with this in Nike env"
-
-Key considerations for enterprise codebases:
-1. **Privacy Mode** — enable it for any repo with proprietary business logic
-2. **Business plan** — SOC 2 Type II compliance; Privacy Mode on by default
-3. **`.cursorignore`** — exclude sensitive configs, secrets, and compliance-sensitive files
-4. **MCP token scoping** — fine-grained, read-only, scoped to specific repos
-5. **Agent trust** — commit before every agent task; review every diff
-
-### Protecting secrets from indexing
-
-Cursor's codebase index includes all non-gitignored files. Secrets in `.env` files or config folders **will** be indexed unless you exclude them.
-
-Create a `.cursorignore` (same syntax as `.gitignore`):
 ```
-# .cursorignore
+node_modules/
+dist/
+public/core/busytex/       # 150 MB of WASM assets — keep out of the index
+*.pdf
 .env
 .env.*
 !.env.example
 secrets/
-config/production.yml
-*.pem
-*.key
-credentials/
 ```
 
-Best practice: also add these to `.gitignore` if not already there. If a secret was ever committed, rotate it — Cursor's index may have captured it.
+If a secret was ever committed, rotate it — the index may have captured it.
 
-### Preventing secrets from appearing in prompts
+### Agent trust model
 
-When using `@Files` or `@Folders`, Cursor includes file contents in the prompt. Avoid:
+Agent mode can create/modify/delete files, run terminal commands, and call MCP tools with your credentials. Before each task:
+
+- [ ] Git tree clean (commit first — your undo button)
+- [ ] No write-access MCP servers active that you don't need right now
+- [ ] Privacy Mode on if the codebase contains proprietary logic
+
+**Never let Agent mode install packages without reviewing the `package.json` / `package-lock.json` diff.** Supply-chain risk is real.
+
+### Using Cursor as a security reviewer — CV Builder example
+
+The CV Builder takes arbitrary user text and feeds it into a LaTeX compiler. Three real security questions:
+
 ```
-# DON'T
-"@.env — help me refactor the database config"
+1. "@src/lib/latex-escape.ts — review the escape coverage. Are there any LaTeX
+   special characters not handled? What's the worst input a user could supply
+   that would either (a) execute LaTeX commands they shouldn't, or
+   (b) crash the compiler?"
 
-# DO
-"@src/config/database.py — help me refactor this. The env vars it reads are DB_HOST, DB_PORT, DB_NAME"
-```
+2. "@src/lib/pdf-compiler.ts — the texlyre-busytex Worker runs in the browser
+   with the user's compiled tex. Is there any way a crafted .tex file could
+   read files outside the WASM sandbox, or leak data via fetch?"
 
-Reference the *names* of env vars. Never attach the file containing the values.
-
-### Agent mode trust model
-
-Agent mode has significantly higher blast radius than Chat or `Cmd+K`:
-- It can **create, modify, and delete** files
-- It can **run terminal commands** including `rm`, `git push`, package installs
-- It can **call MCP tools** with your credentials
-
-**Checklist before running an agent task:**
-- [ ] Is the git tree clean? (commit first — your undo button)
-- [ ] Does this task need write access to anything sensitive?
-- [ ] Are any MCP servers active that have write access you don't need right now?
-- [ ] Is Privacy Mode on if the codebase contains proprietary logic?
-
-### MCP least-privilege
-
-MCP servers run with whatever credentials you give them. Default to read-only tokens where possible:
-
-```json
-// RISKY: full write token for all repos
-{ "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_fullAccessToken" }
-
-// SAFER: fine-grained token, read-only, scoped to one repo
-{ "GITHUB_PERSONAL_ACCESS_TOKEN": "github_pat_readOnlyRepoScoped" }
+3. "@src/components/ContactForm.tsx — the linkedin and website fields render
+   into \href{} in the generated PDF. Is there an injection risk where a
+   crafted URL escapes the href context?"
 ```
 
-For team MCP setups:
-- Store tokens in environment variables, never in committed config files
-- Use a `.cursor/mcp.json.example` with placeholder values that is committed
-- Add `.cursor/mcp.json` (with real values) to `.gitignore`
-- Audit MCP server source code before adding community servers — they run with your credentials
-
-### Using Cursor as a security reviewer
-
-Flipping the direction: Cursor can *find* vulnerabilities before attackers do.
-
-**Run `/review-security` on every new route handler, auth change, or data access layer before raising a PR.**
-
-**Targeted security prompts:**
-```
-"@src/api/payments.py — are there any authorisation checks missing?
-A user should only be able to access their own payment records."
-
-"@src/db/queries.py — audit all raw SQL. Flag any that are not
-parameterized and could be vulnerable to injection."
-
-"Review @src/auth/ — is there anything here that would fail
-an OWASP Top 10 audit?"
-```
-
-### Trusting AI-generated code
-
-Agent-generated code lands in your codebase looking identical to human-written code. It is not safer.
+### AI-generated code is not safer code
 
 | Risk | What to check |
 |---|---|
 | Plausible-but-wrong logic | Run tests; review diffs line by line |
-| Invented API surfaces | Check that called methods/functions actually exist |
-| Insecure defaults | Check auth, validation, and error handling in generated routes |
-| Supply chain risk | Never let agent mode install packages without reviewing `pyproject.toml` / `go.mod` diff |
-| Over-permissive code | Check that generated access control matches your actual requirements |
-
-### Demo
-```
-1. Show .cursorignore protecting .env files from indexing
-2. Run /review-security on a route handler with a subtle IDOR vulnerability
-3. Show an Agent diff that adds a package — pause and review before accepting
-4. Show MCP config with read-only scoped token vs. full-access token
-```
+| Invented API surfaces | Check that called methods/functions actually exist (the Awards-section hallucination from Part 3) |
+| Insecure defaults | Check input validation in any new form / API surface |
+| Supply chain | Review every `package.json` diff before accepting |
 
 ---
 
-## 4.6 Model Selection (5 min)
+## 4.6 Team Conventions & Sharing Cursor Config (3 min)
 
-### Available models (as of 2026)
-| Model | Best for |
+### What to commit
+```
+your-repo/
+└── .cursor/
+    ├── rules/                ✓ commit — team coding conventions
+    ├── skills/               ✓ commit — invocable workflows (the CV Builder ships 14)
+    └── mcp.json.example      ✓ commit (with placeholder values)
+.cursor/mcp.json              ✗ gitignore — contains tokens
+```
+
+### Onboarding paragraph for your README
+
+```markdown
+## Cursor Setup
+1. Install Cursor from cursor.sh
+2. Open this repo — codebase indexing starts automatically
+3. Review .cursor/rules/ and .cursor/skills/ — these are how we work
+4. Enable Privacy Mode if required for this project
+```
+
+### Managing PR size with AI workflows
+
+The agent can generate 1000 lines in minutes; review time scales with PR size, not generation time. **Scope the agent → scope the PR.**
+
+| Practice | How |
 |---|---|
-| Claude Sonnet 4 | Complex reasoning, large codebases, agentic tasks |
-| Claude Haiku 3.5 | Fast, lightweight tasks |
-| GPT-4.1 | General tasks, fast responses |
-| Gemini 2.5 Pro | Very long context windows, complex reasoning |
-| o3 | Deep multi-step reasoning, math-heavy problems |
-| `cursor-small` | Ultra-fast autocomplete (used for Tab by default) |
+| One agent task = one PR | Focused scope; commit and PR when done |
+| Worktrees for parallel features | Separate worktree → separate branch → separate PR |
+| Plan/Spec-Kit for big features | Break the plan into phases; each phase = one PR |
+| Bug Bot on every PR | Automated review on the PR before human reviewers see it |
+| Background agents for tests | Test generation in a separate PR from feature code |
 
-You can set different models for autocomplete vs. chat vs. Agent mode.
+Add to `.cursor/rules/general.mdc`:
 
-> **Tip:** For agent tasks on large codebases, Claude Sonnet 4 and Gemini 2.5 Pro are the strongest choices. For quick inline edits, the fast models save time and quota.
+```markdown
+- Break work into PRs of ≤500 lines of meaningful changes.
+- Each PR should be independently reviewable and deployable.
+- If a task would produce >500 lines, ask me to split it into phases first.
+```
+
+### Evolving rules over time
+
+When Cursor generates something wrong: identify the pattern → add a rule → commit. Rules are **living documentation** of your team's decisions.
 
 ---
 
-## 4.7 Structured AI Methodologies: Spec-Kit & BMAD (10 min)
-
-> Spec-Kit was the **#5 most-requested topic** (50%). BMAD was #8 (38%). Both are covered.
-
----
-
-### Spec-Kit — Specification-Driven Development
-
-**Spec-Kit** ([github.com/github/spec-kit](https://github.com/github/spec-kit)) is GitHub's toolkit for *specification-driven development*: instead of writing code and hoping it matches requirements, you make the specification executable and generate code from it.
-
-#### The Spec-Kit workflow
-
-```
-Constitution → Specification → Plan → Tasks → Implement
-```
-
-| Phase | Command | What it produces |
-|---|---|---|
-| Define principles | `/speckit.constitution` | `constitution.md` — project rules & constraints |
-| Define requirements | `/speckit.specify` | `specification/*.md` — what to build |
-| Plan implementation | `/speckit.plan` | Technical approach and architecture decisions |
-| Break down work | `/speckit.tasks` | Implementable task list |
-| Generate code | `/speckit.implement` | Working code matching the spec |
-| Clarify ambiguity | `/speckit.clarify` | Resolved questions embedded in spec |
-| Validate completeness | `/speckit.checklist` | Gap analysis against requirements |
-
-#### Installation
-```bash
-uv tool install specify-cli --from git+https://github.com/github/spec-kit.git
-```
-
-Then open the project in Cursor and use the slash commands in chat or Agent mode.
-
-#### Project structure
-```
-your-project/
-└── .speckit/
-    ├── constitution.md     ← immutable project principles
-    └── specification/
-        ├── auth.md
-        └── payments.md
-```
-
-#### When to use it
-- Greenfield features where requirements need to be explicit before coding starts
-- Team alignment — the spec files become living documentation everyone edits
-- Brownfield: start by specifying existing code, then iterate
-
-#### Example: writing a constitution
-```
-/speckit.constitution
-
-"This is a Python FastAPI service.
-Principles:
-- No runtime type coercion — use Pydantic for all validation
-- All external IO must be abstracted behind interfaces
-- Tests are required before implementation is accepted
-- No package may be added without a security review"
-```
-
----
-
-### BMAD Method — Agile AI-Driven Development Framework
-
-**BMAD** (Build More Architect Dreams — [docs.bmad-method.org](https://docs.bmad-method.org)) is a framework that brings a full software development lifecycle into your AI editor through **specialized agent personas**.
-
-#### Core concept: agent personas
-Instead of talking to a generic AI, you invoke a specific expert:
-
-| Agent | Role |
-|---|---|
-| `@analyst` | Business analysis, requirements, PRFAQs |
-| `@pm` | Product management, stories, roadmap |
-| `@architect` | System design, ADRs, technical direction |
-| `@dev` | Implementation, code review, debugging |
-| `@qa` | Test strategy, risk-based testing |
-| `bmad-help` | Meta-agent — tells you what to do next |
-
-#### Installation
-```bash
-npx bmad-method install
-```
-
-#### Using BMAD in Cursor
-```
-"Acting as @architect: review this system design and produce an ADR for
-the choice between Kafka and RabbitMQ for our event bus."
-```
-
-#### BMAD vs. Spec-Kit — which to choose?
-
-| | Spec-Kit | BMAD |
-|---|---|---|
-| Focus | Specification → code | Full lifecycle (discovery → deployment) |
-| Scope | Single feature/module | Whole product or large initiative |
-| Overhead | Low — a few markdown files | Medium — structured artefacts per phase |
-| Best for | Developer-led features, API design | Cross-functional initiatives, new products |
-
-> You can use **both**: use BMAD for discovery and architecture phases, then hand off to Spec-Kit for the specification → implementation loop.
-
----
-
-## 4.8 Productivity Patterns & Anti-Patterns (5 min)
-
-### High-value patterns
-- **Rubber duck at scale** — describe a problem in chat before you've even started coding; the act of articulation plus AI response often reveals the solution immediately
-- **Code review prep** — "What questions will reviewers ask about this diff?"
-- **Documentation generation** — "Write a README section explaining how to use this module"
-- **Migration assistance** — "@Codebase — find all places that use the old API and list them"
-- **Architecture sounding board** — "Here are 2 approaches. Which is more maintainable at scale?"
-
-### Anti-patterns to avoid
-| Anti-pattern | Problem | Fix |
-|---|---|---|
-| Accepting without reading | AI makes plausible-but-wrong changes | Always read the diff |
-| One giant Agent task | Hard to review, risky to roll back | Break into smaller tasks |
-| No `.cursor/rules` | Inconsistent output across the team | Add rules for every convention you care about |
-| Using AI for everything | Loses your own understanding | Use it to accelerate, not replace, thinking |
-| Skipping git commits | No undo for agent mode | Commit before every agent task |
-| 5000+ line PRs from agent mode | Unreviewable, risky to merge | Scope the agent → scope the PR |
-
----
-
-## 4.9 Wrap-Up & Q&A (Both Presenters — 15 min)
+## Wrap-Up
 
 ### Summary: The capability stack
 
 ```
-Layer 1 — Tab / Cmd+K / Chat     Individual edits and Q&A
-Layer 2 — @Context + Rules       High-quality, consistent single output
-Layer 3 — Commands + Skills      Repeatable, team-wide workflows
-Layer 4 — Agent tab + Sub-agents  Autonomous multi-file feature work
-Layer 5 — Worktrees + Cloud      Parallel, async, background execution
-Layer 6 — MCP + Spec-Kit/BMAD    Integrated lifecycle from ticket to deploy
+Layer 1 — Tab / Cmd+K / Chat       Individual edits and Q&A
+Layer 2 — @Context + Rules         High-quality, consistent single output
+Layer 3 — Skills                   Repeatable, team-wide workflows (speckit-* is the worked example)
+Layer 4 — Agent + Sub-agents       Autonomous multi-file feature work
+Layer 5 — Worktrees + Best-of-N    Parallel branches; same task across N models
+                                   + Background agents for hands-off execution
+Layer 6 — MCP + Spec-Kit           Integrated lifecycle from ticket to deploy
 ```
 
 Most engineers live at Layers 1–2. Today's goal is comfort at 3–5 and awareness of 6.
 
-### Top 10 things to do this week
+### Top 7 things to do this week
+
 1. Enable codebase indexing on your main project
-2. Learn all `@` context symbols — practise one per day
-3. Add a `.cursor/rules/general.mdc` with 5 team conventions
-4. Add a `.cursor/rules/python.mdc` (or `golang.mdc`) with language-specific rules
-5. Try one Agent task for a unit of work you'd normally spend 2 hours on
-6. Use Plan mode on a task that touches 3+ files
-7. Set up the GitHub MCP server (or Jira if that's your workflow)
-8. Ask Cursor to write tests for an untested module
-9. Share your `.cursor/rules/` in a team PR
-10. Run `/review-security` on a PR before merging
+2. Add a `.cursor/rules/` with one always-on rule pointing at your current design doc (like `specify-rules.mdc`)
+3. Install the speckit-* skills on a real project and run `/speckit-specify` on a small feature
+4. Try one Agent task with explicit constraints (STAR prompt, reference an existing file)
+5. Use a worktree to run two independent features in parallel
+6. Set up GitHub or Jira MCP with a read-only, repo-scoped token
+7. Run a security review prompt on a PR before merging
 
 ### Resources
-- [Cursor docs](https://docs.cursor.com)
-- [Cursor forum](https://forum.cursor.com)
+
+- [Cursor docs](https://docs.cursor.com) · [Cursor forum](https://forum.cursor.com) · [cursor.directory](https://cursor.directory) (rules library)
+- [Spec-Kit](https://github.com/github/spec-kit) · [BMAD Method](https://docs.bmad-method.org)
 - [MCP servers registry](https://github.com/modelcontextprotocol/servers)
-- [Cursor rules examples](https://cursor.directory)
-- [Spec-Kit](https://github.com/github/spec-kit)
-- [BMAD Method](https://docs.bmad-method.org)
+- [texlyre-busytex](https://www.npmjs.com/package/texlyre-busytex) · [shadcn/ui](https://ui.shadcn.com) · [Vitest](https://vitest.dev) (CV Builder stack)
 
 ---
 

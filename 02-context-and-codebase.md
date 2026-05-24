@@ -1,5 +1,7 @@
 # Part 2 — Context & Codebase Intelligence
-**Presenter B · ~50 minutes**
+**Presenter B · ~35 minutes**
+
+> All demos use the CV Builder app at `/Users/tmarfe/nike/cv-builder`. Open it in Cursor before this section starts.
 
 ---
 
@@ -32,19 +34,24 @@ Cursor indexes your entire codebase locally to enable semantic search.
 ### `.cursorignore`
 ```
 # Example .cursorignore
-__pycache__/
-.venv/
-*.generated.py
-secrets/
-vendor/
 node_modules/
 dist/
+.vite/
+public/core/busytex/       # ~150 MB of WASM assets — keep out of the index
+*.pdf
+.env
+.env.*
+!.env.example
+secrets/
 ```
 
-### Demo
+### Demo (using the CV Builder app)
 ```
-Cmd+L → "Where is the authentication middleware defined?"
-→ Cursor searches the codebase semantically and returns the exact file + line
+Cmd+L → "How does the app turn form data into a PDF?"
+→ Cursor searches semantically and surfaces the pipeline:
+   ResumeData → generateLatex() in src/lib/latex-generator.ts
+              → compilePdf() in src/lib/pdf-compiler.ts (texlyre-busytex Worker)
+              → Blob URL → <iframe> in src/components/ReviewView.tsx
 ```
 
 ---
@@ -57,7 +64,7 @@ The `@` symbol is the primary way to **explicitly pull context** into chat or Ag
 Reference specific files or entire directories.
 
 ```
-"Refactor @src/api/users.py to use the repository pattern from @src/api/products.py"
+"Refactor @src/lib/latex-generator.ts so that every section generator follows the same conditional-empty-string contract used by @src/lib/latex-generator.ts::generateSummary"
 ```
 
 - Drag-and-drop files into chat also works
@@ -67,27 +74,30 @@ Reference specific files or entire directories.
 Triggers a semantic search across the entire indexed codebase.
 
 ```
-"@Codebase How do we handle rate limiting?"
+"@Codebase How does the app turn form data into a PDF?"
 ```
 
 Best for: cross-cutting concerns, finding existing patterns, understanding unfamiliar code.
+
+> **Note:** In Agent mode, codebase search happens automatically — the agent decides when to search the index without you typing `@Codebase`. The explicit symbol is still useful in Ask/Chat mode, or in Agent mode when you want to force a search the agent didn't initiate on its own.
 
 ### `@Docs`
 Reference official documentation for any library without copy-pasting.
 
 ```
-"@Docs FastAPI — how do I define a dependency that validates auth tokens?"
+"@Docs Vitest — how do I run a single test file with the @web reporter for nicer diffs?"
+"@Docs shadcn/ui Tabs — what props do I need to control the active tab from parent state?"
 ```
 
 - Cursor fetches and caches docs pages
-- Works with any URL: `@Docs https://docs.pydantic.dev/latest/...`
+- Works with any URL: `@Docs https://ui.shadcn.com/docs/components/tabs`
 - Add frequently used libraries in `Cursor Settings` → `Features` → `Docs`
 
 ### `@Web`
 Live web search — useful for recent information the model may not know.
 
 ```
-"@Web latest breaking changes in Go 1.23"
+"@Web texlyre-busytex 2026 — does the PdfLatex class support per-call timeout yet?"
 ```
 
 Use when: the model's training data may be outdated, or you need current issues/PRs.
@@ -105,7 +115,7 @@ Pull in the output of your last terminal command.
 
 ```
 # Run failing test, then:
-"@Terminal — why is this pytest test failing?"
+"@Terminal — why is this vitest test failing?"
 ```
 
 ### Context reference cheat sheet
@@ -121,12 +131,12 @@ Pull in the output of your last terminal command.
 | `@Terminal` | Last terminal output |
 | `@Lint` | Current lint errors |
 
-### Demo sequence
+### Demo sequence (using the CV Builder app)
 ```
-1. "@Codebase where is user authentication handled?"
-2. "@Files @src/middleware/auth.py — add a check for expired tokens"
-3. "@Docs pyjwt — what options does jwt.decode() accept?"
-4. "@Git — what changed in auth.py in the last week?"
+1. "@Codebase how does generateLatex assemble sections in the correct order? Where is the order defined?"
+2. "@Files @src/lib/latex-generator.ts — add a generator for a Languages section (free-text input, conditional). Match the contract used by generateSkills."
+3. "@Docs Vitest — show me the recommended pattern for testing a function that returns a multi-line string with deterministic indentation."
+4. "@Git — what changed in src/lib/latex-generator.ts in the last week? Summarise the intent."
 ```
 
 ---
@@ -141,8 +151,8 @@ your-project/
 └── .cursor/
     └── rules/
         ├── general.mdc        ← always-on rules
-        ├── python.mdc         ← applied to .py files
-        ├── golang.mdc         ← applied to .go files
+        ├── typescript.mdc     ← applied to .ts/.tsx files
+        ├── react.mdc          ← applied to React components
         └── testing.mdc        ← applied to test files
 ```
 
@@ -152,70 +162,75 @@ Rules files use `.mdc` format (Markdown with optional frontmatter).
 
 | Type | Description | When applied |
 |---|---|---|
-| **Always** | Applied to every request | No frontmatter needed |
-| **Auto-attached** | Applied based on file globs | `globs: ["**/*.py"]` |
+| **Always** | Applied to every request | `alwaysApply: true` in frontmatter |
+| **Auto-attached** | Applied based on file globs | `globs: ["**/*.ts", "**/*.tsx"]` |
 | **Agent-requested** | AI decides when to use | Add description in frontmatter |
 | **Manual** | Only when you `@` them | Good for one-off templates |
 
-### Example: `general.mdc`
+### The CV Builder's actual rule — `specify-rules.mdc`
+
+The CV Builder ships with exactly one rule, and it's a great pattern worth copying:
+
 ```markdown
 ---
-description: General coding standards for this project
+alwaysApply: true
 ---
 
-- Follow the existing project structure: handlers → services → repositories.
-- All functions must have docstrings (Google style).
-- Prefer composition over inheritance.
-- All async code must handle errors with try/except and log before re-raising.
-- Use named exports / public functions. Avoid exposing internal helpers.
-- No hardcoded secrets or credentials — always use environment variables.
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+at specs/001-resume-builder/plan.md
+<!-- SPECKIT END -->
 ```
 
-### Example: `python.mdc` (auto-attached to `.py` files)
+This is a 4-line, always-on rule that points the agent at the **active spec plan**. The plan is the source of truth for stack decisions (R-001 R-005), constitution gates, and file layout — so every chat in the project sees that context without any `@` reference.
+
+Per-project rules don't have to be long. One always-on pointer + a couple of glob-scoped rules is usually enough.
+
+### Example additions you might layer on top
+
+`typescript.mdc` (auto-attached to `.ts`/`.tsx` files):
 ```markdown
 ---
-globs: ["**/*.py"]
+globs: ["**/*.ts", "**/*.tsx"]
 ---
 
-- Use type hints on all function signatures (PEP 484).
-- Use `dataclasses` or Pydantic `BaseModel` for data structures — no plain dicts for domain objects.
-- Prefer `pathlib.Path` over `os.path`.
-- Use f-strings for formatting. No `.format()` or `%` formatting.
-- Imports: stdlib → third-party → local, separated by blank lines (isort convention).
-- Max function length: 30 lines. Extract if larger.
+- Use explicit interfaces in src/lib/types.ts — no inline anonymous shapes for entities.
+- Pure functions in src/lib/ must have no side effects (no DOM, no fetch, no Date.now without injection).
+- Prefer named exports; reserve default exports for React components.
+- Imports: external packages → @/ aliases → relative, separated by blank lines.
+- Max file length: 200 lines (matches Constitution VI in plan.md).
 ```
 
-### Example: `golang.mdc` (auto-attached to `.go` files)
+`react.mdc` (auto-attached to components):
 ```markdown
 ---
-globs: ["**/*.go"]
+globs: ["src/components/**/*.tsx"]
 ---
 
-- Always check errors immediately after the call. Never use `_` for error return values.
-- Use `context.Context` as the first parameter for functions that do I/O.
-- Prefer table-driven tests.
-- Structs: exported fields first, then unexported, grouped by concern.
-- Use `errors.Is()` / `errors.As()` for error comparison, never `==`.
+- All inputs must be controlled (value + onChange) — never uncontrolled.
+- Follow the design tokens in DESIGN.md (colors, border-radius, spacing). Do not invent new shades.
+- shadcn/ui primitives in components/ui/ are scaffolded by CLI — never modify them directly. Compose them.
+- Use crypto.randomUUID() for entry IDs.
 ```
 
-### Example: `testing.mdc`
+`testing.mdc`:
 ```markdown
 ---
-globs: ["**/*_test.py", "**/test_*.py", "**/*_test.go"]
+globs: ["tests/**/*.test.ts"]
 ---
 
-- Python: use pytest. Test names must describe behavior: `test_returns_404_when_user_not_found`.
-- Go: use table-driven tests. Subtests must describe the scenario.
-- Mock external services — never make real network calls in tests.
-- Aim for 80% branch coverage for business logic.
+- Use vitest. Test names must describe behaviour: `it('renders Present when isCurrent is true', ...)`.
+- Test pure functions in src/lib/ exhaustively; do not write UI component tests — the live PDF preview is the feedback loop (per plan.md Constitution IV).
+- Use realistic fixtures from the per-section types in src/lib/types.ts.
 ```
 
-### Demo
+### Demo (using the CV Builder app)
 ```
-1. Show a project without rules → generate a Python function → inconsistent style
-2. Add python.mdc with team conventions
-3. Same prompt → Cursor now follows the conventions automatically
-4. Show that rules are committed to git → shared with the whole team
+1. Show .cursor/rules/specify-rules.mdc — 4 lines, alwaysApply: true, points at the plan
+2. Cmd+L → "Add a generator for a Languages section" — note that Cursor reads plan.md before suggesting code (it knows about Constitution VI, the section ordering rule, the file layout)
+3. Open a fresh project without rules → same prompt → suggestions wander away from the project's conventions
+4. Show that rules are committed to git → new team members get them automatically (and the spec-kit skills too)
 ```
 
 ### Tips

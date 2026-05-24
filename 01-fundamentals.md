@@ -1,7 +1,9 @@
 # Part 1 — Core Features: Power Patterns
-**Presenter A · ~40 minutes**
+**Presenter A · ~25 minutes**
 
 > We're assuming everyone has completed the pre-workshop setup and tried Tab autocomplete, `Cmd+K`, and Chat. This section is about the non-obvious depth behind each feature — the behaviours most engineers miss after months of daily use.
+>
+> **All demos use the CV Builder app** at `/Users/tmarfe/nike/cv-builder`. Open it in Cursor before this section starts.
 
 ---
 
@@ -38,14 +40,17 @@ Cursor doesn't just complete what you're typing — it watches your edits and pr
 - The suggestion is plausible but subtly wrong — always read it
 - For anything architecturally significant — use Agent mode instead
 
-### Live demo
+### Live demo (using the CV Builder app)
 ```
-1. Add a new field to a Python dataclass
-   → Watch Cursor suggest all the places that need updating
-2. Write a repetitive pattern once (e.g., three dict literals with the same shape)
-   → Watch it complete the second and third from context
-3. Start a function after defining its docstring
-   → Watch it infer the full implementation from the docstring
+1. Open src/lib/types.ts → add a new field `priority: 'high' | 'normal'` to the ExperienceEntry interface
+   → Watch Cursor suggest updates everywhere ExperienceEntry is constructed:
+     - makeExperience() in App.tsx and ExperienceForm.tsx
+     - the experienceEntry test fixture in tests/unit/latex-generator.test.ts
+     - the type annotations in latex-generator.ts
+2. Open src/components/ExperienceForm.tsx → start typing a new <Input> for company website
+   → Watch autocomplete suggest the full controlled-input pattern (value, onChange, className) from the surrounding fields
+3. Open src/lib/latex-generator.ts → start typing a docstring above generateExperience
+   → Watch Cursor infer the full docstring (@param entries, @returns LaTeX block, conditional behaviour) from the implementation
 ```
 
 ---
@@ -74,7 +79,7 @@ You can keep iterating in the same `Cmd+K` bar without reopening it. Each follow
 Often overlooked: you can use `Cmd+K` **inside the terminal panel** to generate and run shell commands.
 ```
 Cmd+K in terminal →
-"find all Python files modified in the last 24 hours, excluding __pycache__"
+"find all TypeScript files modified in the last 24 hours, excluding node_modules and dist"
 → Cursor generates the find command → you approve and run it
 ```
 
@@ -91,12 +96,12 @@ Cmd+K in terminal →
 | Reject change | `Escape` |
 | Follow-up prompt | Just keep typing in the same bar |
 
-### Demo
+### Demo (using the CV Builder app)
 ```
-1. Select a 20-line Python function → Cmd+K → "add early returns to reduce nesting"
-2. Follow up: "now add a docstring with Args and Returns sections"
-3. Reject the docstring → try again: "one-line docstring only"
-4. Show terminal Cmd+K: generate a git command from a description
+1. Select generateExperience() in src/lib/latex-generator.ts → Cmd+K → "add an early return that returns '' if every entry is missing both jobTitle and company"
+2. Follow up: "now add a JSDoc block with @param and @returns explaining the conditional behaviour"
+3. Reject the JSDoc → try again: "one-line JSDoc only — keep the @param and @returns tags"
+4. Show terminal Cmd+K: "run only the latex-generator vitest file in watch mode"
 ```
 
 ---
@@ -139,11 +144,12 @@ Does it touch multiple files?  → Agent tab (Cmd+L → Agent)
 Do you need to understand first? → Chat (Ask tab), then act
 ```
 
-### Demo
+### Demo (using the CV Builder app)
 ```
-1. Quick Ask-mode conversation: understand a piece of Python code across 2 follow-ups
-2. Switch to Edit mode on the same file → make a targeted change
-3. Apply a code block from Ask mode using the Apply button
+1. Ask mode on src/lib/latex-generator.ts: "How does generateLatex assemble sections into the final document?"
+   → follow-up: "What happens if an optional section returns an empty string — does it leave a blank line?"
+2. Switch to Edit mode on the same file → "When a section is empty, ensure no extra blank line ends up between adjacent sections"
+3. Apply the snippet from the Ask mode response using the Apply button
 ```
 
 ---
