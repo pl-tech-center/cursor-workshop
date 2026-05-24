@@ -1,5 +1,3 @@
-# Cursor Workshop for Engineers
-
 ## Overview
 
 A hands-on workshop for engineers who already use Cursor and want to move from ad-hoc usage to deliberate, high-leverage workflows. The session goes deep on context mastery, mode and model selection, agent mode, parallelism, **Spec-Kit-driven development**, and team practices.
