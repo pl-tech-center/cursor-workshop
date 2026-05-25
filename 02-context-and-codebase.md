@@ -114,8 +114,11 @@ The `@` symbol is the primary way to **explicitly pull context** into chat or Ag
 Reference specific files or entire directories. This is your **most-used** context tool — the explicit, precise alternative to hoping the agent finds what it needs.
 
 ```
-"Refactor @src/lib/latex-generator.ts so that every section generator follows the same conditional-empty-string contract used by @src/lib/latex-generator.ts::generateSummary"
+"Refactor @src/lib/latex-generator.ts — every section generator should follow
+generateSummary()'s contract: return '' when the section has no content"
 ```
+
+To pin a specific function, select it in the editor and press **Cmd+L** (Add to Chat), or attach the file with `@` and name the function in the prompt as above.
 
 ```
 "Look at @src/components/ — are all form components following the same controlled-input pattern?"
@@ -145,7 +148,7 @@ Best for: cross-cutting concerns, finding existing patterns, understanding unfam
 Reference indexed documentation for any library without copy-pasting. This is how you get framework-specific guidance that's more accurate than the model's training data.
 
 ```
-"@Docs Vitest — how do I run a single test file with the @web reporter for nicer diffs?"
+"@Docs Vitest — how do I run a single test file from the command line?"
 "@Docs shadcn/ui Tabs — what props do I need to control the active tab from parent state?"
 ```
 
@@ -191,16 +194,20 @@ These are particularly useful for:
 - Generating PR descriptions from the full branch diff
 - Understanding what changed since branching
 
+**Workshop caveats:**
+- `@Branch (Diff with Main)` compares your current branch to the repo's detected default branch (usually `origin/HEAD`, else `main` → `master` → `develop`). The symbol always says "Main" in the UI; you can't choose a custom base like `development`
+- In multi-root workspaces, git context can be tied to the first root (known Cursor limitation)
+
 ### `@Terminals`
 Pull in the output of your terminal(s). Essential for the "run → fail → fix" loop.
+
+You can attach the whole terminal with `@Terminals`, or **select specific lines** in the integrated terminal and press **Cmd+L** (Add to Chat) to send only the relevant output — useful when the full buffer is too noisy.
 
 ```
 # Run failing test, then:
 "@Terminals — why is this vitest test failing?"
 "@Terminals — the build failed. What's wrong?"
 ```
-
-The agent reads the last N lines of stdout/stderr from your integrated terminal. No need to copy-paste error output.
 
 ### `@Past Chats`
 Reference context from a previous conversation. Useful when building on earlier work without re-explaining.
