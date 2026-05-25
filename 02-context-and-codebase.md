@@ -286,7 +286,7 @@ Fix the margin in the component that renders section headers."
 
 ## 2.4 `.cursor/rules` — Project-Level Instructions (15 min)
 
-Rules let you encode your team's conventions so Cursor follows them automatically — every session, for everyone on the team. This is the **#3 most-requested topic** from the poll (54%).
+**Project rules** live in `.cursor/rules/` as version-controlled Markdown files. They give Agent (Chat) persistent instructions — conventions, architecture decisions, workflow templates — without you re-pasting them every time. When a rule applies, its contents are included at the start of the model context; *which* rules apply depends on how you configure them (always-on, file-scoped, agent-selected, or manual `@`-mention). Commit rules to git and everyone on the team gets the same guidance. Rules affect **Agent (Chat) only** — not Cursor Tab or Inline Edit (Cmd/Ctrl+K).
 
 ### File location
 ```
@@ -296,23 +296,25 @@ your-project/
         ├── general.mdc        ← always-on rules
         ├── typescript.mdc     ← applied to .ts/.tsx files
         ├── react.mdc          ← applied to React components
-        └── testing.mdc        ← applied to test files
+        ├── testing.mdc        ← applied to test files
+        └── frontend/
+            └── components.md  ← rules can live in subfolders
 ```
 
-Rules files use `.mdc` format (Markdown with optional frontmatter).
+Rules files use Markdown. Cursor supports both `.md` and `.mdc` extensions — plain `.md` works for simple rules; use `.mdc` with YAML frontmatter when you need `description`, `globs`, or `alwaysApply`. The `globs` field accepts a **string or array** — e.g. `globs: docs/**/*.md, docs/**/*.mdx` or `globs: ["**/*.ts", "**/*.tsx"]`.
 
 ### Rule types
 
 | Type | Description | When applied |
 |---|---|---|
-| **Always** | Applied to every request | `alwaysApply: true` in frontmatter |
-| **Auto-attached** | Applied based on file globs | `globs: ["**/*.ts", "**/*.tsx"]` |
-| **Agent-requested** | AI decides when to use | Add description in frontmatter |
-| **Manual** | Only when you `@` them | Good for one-off templates |
+| **Always Apply** | Applied to every Agent chat session | `alwaysApply: true` in frontmatter |
+| **Apply to Specific Files** | Applied when matching files are in context | `globs: ["**/*.ts", "**/*.tsx"]` |
+| **Apply Intelligently** | Agent decides when to use based on `description` | `description: "…"` in frontmatter |
+| **Apply Manually** | Only when you `@`-mention the rule | Good for one-off templates |
 
-### The CV Builder's actual rule — `specify-rules.mdc`
+### The CV Builder's main rule pattern — `specify-rules.mdc`
 
-The CV Builder ships with exactly one rule, and it's a great pattern worth copying:
+The CV Builder's main pattern is `specify-rules.mdc` — a short always-on rule that points at the active plan. (There's also `speckit-commit-workflow.mdc` for Spec Kit commits.) It's a great pattern worth copying:
 
 ```markdown
 ---
@@ -326,7 +328,9 @@ at specs/001-resume-builder/plan.md
 <!-- SPECKIT END -->
 ```
 
-This is a 4-line, always-on rule that points the agent at the **active spec plan**. The plan is the source of truth for stack decisions (R-001 R-005), constitution gates, and file layout — so every chat in the project sees that context without any `@` reference.
+This is a short, always-on rule with a 3-line instruction body that tells every Agent session to read `specs/001-resume-builder/plan.md` — you don't need to `@`-mention the plan yourself. What's injected is the **pointer instruction**, not the plan contents themselves (the agent usually reads the file when relevant). The plan is the source of truth for stack decisions in `research.md` (e.g. **R-001**: client-side PDF compilation via `texlyre-busytex`; **R-005**: which shadcn/ui components to scaffold), constitution gates, and file layout.
+
+**Pointer vs `@file` in rules:** Prose like "read `plan.md`" injects only the instruction — the agent reads the file when needed (cheap for large docs). Writing `@specs/001-resume-builder/plan.md` in the rule body embeds that file's contents whenever the rule applies (guaranteed, but costly for always-on rules). Use `@filename` for small templates; use prose pointers for large living documents.
 
 Per-project rules don't have to be long. One always-on pointer + a couple of glob-scoped rules is usually enough.
 
@@ -336,6 +340,7 @@ Per-project rules don't have to be long. One always-on pointer + a couple of glo
 ```markdown
 ---
 globs: ["**/*.ts", "**/*.tsx"]
+alwaysApply: false
 ---
 
 - Use explicit interfaces in src/lib/types.ts — no inline anonymous shapes for entities.
@@ -349,6 +354,7 @@ globs: ["**/*.ts", "**/*.tsx"]
 ```markdown
 ---
 globs: ["src/components/**/*.tsx"]
+alwaysApply: false
 ---
 
 - All inputs must be controlled (value + onChange) — never uncontrolled.
@@ -361,6 +367,7 @@ globs: ["src/components/**/*.tsx"]
 ```markdown
 ---
 globs: ["tests/**/*.test.ts"]
+alwaysApply: false
 ---
 
 - Use vitest. Test names must describe behaviour: `it('renders Present when isCurrent is true', ...)`.
@@ -370,31 +377,41 @@ globs: ["tests/**/*.test.ts"]
 
 ### Demo (using the CV Builder app)
 ```
-1. Show .cursor/rules/specify-rules.mdc — 4 lines, alwaysApply: true, points at the plan
-2. Cmd+L → "Add a generator for a Languages section" — note that Cursor reads plan.md before suggesting code (it knows about Constitution VI, the section ordering rule, the file layout)
-3. Open a fresh project without rules → same prompt → suggestions wander away from the project's conventions
-4. Show that rules are committed to git → new team members get them automatically (and the spec-kit skills too)
+1. Show `.cursor/rules/specify-rules.mdc` — short file with a 3-line instruction body, `alwaysApply: true`, pointer to the plan
+2. Cmd+L → "Add a generator for a Languages section" — note the rule instructs the agent to read `plan.md` (it typically picks up Constitution VI, section ordering, and file layout without you `@`-mentioning the plan)
+3. Show that rules are committed to git → new team members get them automatically (and the spec-kit skills too)
 ```
 
 ### Context window impact
 
-Rules consume context on every request. This is the trade-off: more rules = more consistent output, but also less room for actual code context.
+When applied, rule contents are included at the start of the model context — but **when** they apply depends on the rule type:
+
+- **Always Apply** (`alwaysApply: true`) → every Agent chat session
+- **Apply to Specific Files** (`globs`) → only when matching files are in context
+- **Apply Intelligently** (`description`) → when Agent judges them relevant
+- **Apply Manually** → only when you `@`-mention the rule
+
+Only always-on rules pay the context cost on every session. This is the trade-off: more always-applied rules = more consistent output, but also less room for actual code context.
+
+**Note:** Project rules apply to **Agent (Chat) only** — not Cursor Tab or Inline Edit (Cmd/Ctrl+K).
+
+Relative context costs below are workshop heuristics — Cursor docs confirm rules are injected into context but don't publish official token counts.
 
 | Approach | Context cost | When to use |
 |---|---|---|
-| One `alwaysApply` pointer rule (like `specify-rules.mdc`) | Minimal (~50 tokens) | Always — points the agent at the plan |
-| 3-4 glob-scoped rules | Low (~200 tokens each, only when relevant files are touched) | Style enforcement per file type |
-| One massive `general.mdc` with 40 rules | High (~2000+ tokens on every request) | Avoid — split into scoped rules instead |
+| One short `alwaysApply` pointer rule (like `specify-rules.mdc`) | **Minimal** | Always Apply — points the agent at the plan |
+| 3–4 glob-scoped rules | **Low, per matching file** | Style enforcement per file type |
+| One massive always-on `general.mdc` with 40 rules | **High, every session** | Avoid — split into scoped rules instead |
 
-**Rule of thumb:** If your rules total exceeds ~1000 tokens on a given request, you're eating into the context the agent needs for the actual code. Prefer targeted glob-scoped rules over one huge always-on file.
+**Rule of thumb:** If your always-applied rules feel like a full page of text, you're probably eating into the context the agent needs for actual code. Prefer prose pointers (`read plan.md`) or glob-scoped rules over one huge always-on file; reserve `@filename` in rule bodies for small templates that must load whenever the rule applies.
 
 ### Tips
 - Start simple — add rules when you notice Cursor generating code that doesn't match your style
-- Rules over ~500 lines get ignored; keep them focused
+- Keep each rule under 500 lines (official best practice). Very long rules waste context and are harder for the model to follow consistently.
 - Each rule should be a specific, testable instruction — not vague guidance
 - **Rules are living documentation** — treat them like code (PRs, review, iteration)
 - When Cursor ignores a rule, it's usually too long or contradicts another rule — simplify
-- Glob rules only fire when matching files are in context — cheap and precise
+- Glob rules only fire when matching files are in context — cheap and precise; set `alwaysApply: false` explicitly on file-scoped rules
 
 ---
 
