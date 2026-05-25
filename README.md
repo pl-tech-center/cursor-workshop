@@ -140,7 +140,7 @@ Reinforced throughout the workshop:
    ```bash
    cd ../cv-builder
    npm install
-   npm run download:tex-assets       # one-time download of TeX Live WASM (~150 MB)
+   npm run download:tex-assets       # one-time download of TeX Live WASM (~680 MB)
    npm test                          # vitest — all unit tests should pass
    npm run dev                       # opens http://localhost:5173
    ```

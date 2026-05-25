@@ -8,7 +8,7 @@ Hands-on exercises to reinforce each section. Each exercise is 5–10 minutes. D
 > ```bash
 > cd ../cv-builder
 > npm install
-> npm run download:tex-assets   # one-time, ~150 MB of TeX Live WASM
+> npm run download:tex-assets   # one-time, ~680 MB of TeX Live WASM
 > npm test                      # should be all green before you begin
 > npm run dev                   # http://localhost:5173
 > ```

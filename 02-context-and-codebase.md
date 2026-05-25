@@ -31,7 +31,7 @@ Cursor indexes your codebase to enable semantic search. Since `@Codebase` no lon
 > **Important:** If the index is incomplete or stale, the agent will miss relevant code. Always let indexing finish before starting a complex agent session — especially on a fresh clone.
 
 ### What gets indexed
-- All text files tracked by git (source code, markdown, config files)
+- All text files in the workspace that aren't excluded (source code, markdown, config files — tracked or untracked)
 - Respects `.gitignore` and `.cursorignore`
 - Binary files, images, and compiled output are excluded automatically
 
@@ -48,18 +48,22 @@ Cursor indexes your codebase to enable semantic search. Since `@Codebase` no lon
 
 Excludes files from both the index **and** from being read by the agent. Use it for build artifacts, large bundled assets, secrets, and noise.
 
+> **`.gitignore` vs `.cursorignore`:** Cursor respects `.gitignore` for indexing — so paths already gitignored stay out of the index without a `.cursorignore`. Add `.cursorignore` when you also want to block Agent from *reading* paths (e.g. secrets that might be tracked, or noise you still keep on disk).
+
 ```
-# Example .cursorignore
+# Example .cursorignore (recommended; not committed in cv-builder)
 node_modules/
 dist/
 .vite/
-public/core/busytex/       # ~150 MB of WASM assets — keep out of the index
+public/core/busytex/       # ~680 MB of WASM assets — keep out of the index
 *.pdf
 .env
 .env.*
 !.env.example
 secrets/
 ```
+
+In cv-builder, `public/core/busytex/` is excluded via `.gitignore` instead — see demo step 3 below.
 
 ### Large repo strategies
 - **Monorepos:** Only open workspace folders get indexed. Either open just the package(s) you need, or open the monorepo root and use `.cursorignore` to exclude packages you aren't working on
@@ -69,22 +73,35 @@ secrets/
 ### When the agent doesn't find what you expect
 
 If the agent misses relevant code during a session:
-1. Check that indexing is complete (settings panel)
+1. Check that indexing is complete (`Cursor Settings` → `Indexing & Docs`)
 2. Use explicit `@<filename>` or `@<folder>/` references to point it in the right direction
 3. Ask directly: "search the codebase for how X works" — this prompts the agent to search more aggressively
 4. For cross-cutting concerns, mention multiple related files with `@`
 
 ### Demo (using the CV Builder app)
 ```
-1. Show Codebase Indexing status in Settings — note file count
+1. Show Codebase Indexing status in Cursor Settings → Indexing & Docs — note file count
 2. Cmd+L → "How does the app turn form data into a PDF?"
-   → Agent searches the index autonomously and surfaces the pipeline:
-      ResumeData → generateLatex() in src/lib/latex-generator.ts
+   → Agent searches the index autonomously. It may mention App.tsx and the form tabs
+     (where ResumeData state is held and edited) — that's expected.
+   → The PDF pipeline itself starts in ReviewView when the user opens the Review tab:
+      ResumeData (from App.tsx) → ReviewView.tsx
+                 → generateLatex() in src/lib/latex-generator.ts
                  → compilePdf() in src/lib/pdf-compiler.ts (texlyre-busytex Worker)
-                 → Blob URL → <iframe> in src/components/ReviewView.tsx
-3. Show .cursorignore — note that public/core/busytex/ (150 MB of WASM) is excluded
-4. Ask: "What WASM functions does pdf-compiler.ts call?"
-   → Agent finds the right file even without @Files, because the index has good embeddings for it
+                 → Blob URL → <iframe> in ReviewView.tsx
+3. Open .gitignore → point at public/core/busytex/
+   → Cursor respects .gitignore for indexing, so ~680 MB of WASM stays out even
+     without a .cursorignore. Contrast with the example block above: .cursorignore
+     goes further — it also blocks Agent from reading those paths.
+4. Cmd+L → "How does the app compile LaTeX in the browser?"
+   → No @Files — the prompt names no file, so this exercises codebase search.
+   → Good answer: surfaces src/lib/pdf-compiler.ts and the texlyre-busytex JS API —
+      BusyTexRunner (Worker via initialize(true)) → PdfLatex.compile() → PDF bytes
+      → Blob URL. It should not invent low-level WASM/Emscripten APIs — those live
+      inside the gitignored assets under public/core/busytex/; the app only calls
+      BusyTexRunner and PdfLatex from the npm package.
+   → If the agent misses pdf-compiler.ts, use the troubleshooting steps above: @Files or
+     "search the codebase for browser-side LaTeX compilation".
 ```
 
 ---
@@ -135,13 +152,13 @@ Reference indexed documentation for any library without copy-pasting. This is ho
 **Setup:**
 - Cursor ships with pre-indexed docs for popular libraries (React, TypeScript, Vitest, Tailwind, etc.)
 - Add custom documentation sources: `@Docs` → `Add new doc` → paste a URL
-- Frequently used libraries: add them in `Cursor Settings` → `Features` → `Docs` so they're always available
+- Frequently used libraries: add them in `Cursor Settings` → `Indexing & Docs` so they're always available
 
 **When to use @Docs vs. web search:**
 - `@Docs` — stable API references, established libraries with indexed documentation
 - Natural language ("check the latest docs for X") — bleeding-edge libraries, recent changelogs, community discussions
 
-**Gotcha:** If `@Docs` returns outdated information, re-index the source in Settings or re-add the URL.
+**Gotcha:** If `@Docs` returns outdated information, re-index the source in `Cursor Settings` → `Indexing & Docs` or re-add the URL.
 
 ### Web search (implicit — no `@Web` symbol)
 
@@ -373,7 +390,7 @@ Rules consume context on every request. This is the trade-off: more rules = more
 
 ### Common mistakes
 - Asking vague questions without `@` references
-- Not setting up `.cursorignore` → slow indexing on huge repos
+- Not excluding build assets (`.gitignore` and/or `.cursorignore`) → slow indexing on huge repos
 - Forgetting to commit `.cursor/rules` → team doesn't benefit
 - Writing rules that are too vague ("write good code") — be specific and concrete
 
