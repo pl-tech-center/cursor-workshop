@@ -23,7 +23,7 @@ echo "→ Installing npm dependencies..."
 npm install
 echo "✓ Dependencies installed"
 
-# 3. Download TeX Live WASM assets (~150 MB, one-time)
+# 3. Download TeX Live WASM assets (~680 MB, one-time)
 echo "→ Downloading TeX Live WASM assets (this may take a minute)..."
 npm run download:tex-assets
 echo "✓ TeX assets downloaded"
@@ -38,6 +38,6 @@ echo "=== Setup complete ==="
 echo ""
 echo "Next steps:"
 echo "  1. Open cv-builder in Cursor:  cursor $CV_BUILDER_DIR"
-echo "  2. Let codebase indexing finish (Cursor Settings → Features → Codebase Indexing)"
+echo "  2. Let codebase indexing finish (Cursor Settings → Features → Indexing & Docs)"
 echo "  3. Set your default model: Cmd+Shift+J"
 echo "  4. Try the self-paced orientation in the README if you're new to Cursor"
