@@ -247,28 +247,39 @@ Fix the margin in the component that renders section headers."
 
 ### Demo sequence (using the CV Builder app)
 ```
+0. Setup:
+   git checkout -b workshop/context-demo
+
 1. Implicit codebase search:
-   "How does generateLatex assemble sections in the correct order? Where is the order defined?"
-   → Agent searches the index automatically — no @Codebase needed
+   "How does generateLatex decide which sections appear in the PDF, and in what order?"
+   → Agent searches automatically — no @ symbol needed
 
-2. Explicit file reference:
-   "@src/lib/latex-generator.ts — add a generator for a Languages section (free-text input,
-   conditional). Match the contract used by generateSkills."
+2. Documentation lookup:
+   "@Docs Vitest — how do I run tests in watch mode for a single file?"
+   → Note the command; run it in a terminal and leave it open
 
-3. Documentation lookup:
-   "@Docs Vitest — show me the recommended pattern for testing a function that returns
-   a multi-line string with deterministic indentation."
+3. Explicit file reference (test-first):
+   "@tests/unit/latex-generator.test.ts @src/lib/latex-generator.ts —
+   add describe('generateLanguages') mirroring generateSkills. Use toContain assertions."
+   → Watch terminal: 2 failures (missing export / failing assertions) until step 4
 
-4. Git context:
-   "@Commit (Diff of Working State) — review these changes. Does the new generator match
-   the existing pattern? Write a commit message."
+4. Explicit file reference:
+   "@src/lib/latex-generator.ts — add generateLanguages(languages: string): string.
+   Match the conditional contract of generateSkills. Do NOT wire it into generateLatex yet."
+   → Watch terminal reruns on save; all generateLanguages tests pass
 
 5. Terminal feedback loop:
-   Run `npm test` in the terminal →
-   "@Terminals — two assertions are failing. Fix the expected output in the test file."
+   With watch still running: introduce a typo in one test expectation →
+   select the failure in the terminal → Cmd+L (or @Terminals):
+   "Fix the test expectation, not the implementation."
+   → Watch reruns; all tests green again
 
-6. Branch summary:
-   "@Branch (Diff with Main) — summarise everything we did in this session for a PR description."
+6. Git context:
+   "@Commit (Diff of Working State) — review these changes. Does generateLanguages match
+   generateSkills? Write a commit message." → commit
+
+7. Branch summary:
+   "@Branch (Diff with Main) — summarise this branch for a PR description."
 ```
 
 ---
