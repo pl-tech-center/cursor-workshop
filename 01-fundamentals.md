@@ -106,11 +106,11 @@ Cmd+K in terminal →
 
 ---
 
-## 1.3 Chat Modes: Quick Overview (10 min)
+## 1.3 Chat Modes & Model Selection (10 min)
 
 > Condensed section — 71% of attendees already use chat modes daily. This is a quick reference, not a deep dive.
 
-Chat (`Cmd+L`) has several modes. Switch between them with the toggle at the top of the chat input.
+Chat (`Cmd+L`) has several modes. Switch between them with the mode selector at the top of the chat input.
 
 ### The modes at a glance
 
@@ -122,18 +122,62 @@ Chat (`Cmd+L`) has several modes. Switch between them with the toggle at the top
 | **Debug** | Symptom-driven autonomous debugging | Bug investigation with breakpoints/logging |
 | **Multitask** | Parallel agent sessions running concurrently | Multiple independent tasks at once |
 
+### Agent mode (the default)
+This is where most work happens. The agent reads files, creates files, runs terminal commands, checks errors, and fixes them in a loop until the task is done.
+
+- Starts with `Cmd+L` — Agent is the default mode
+- Reviews diffs per file — accept individually or all at once
+- Can run commands in the terminal (tests, builds, linters)
+- Uses tools: file search, grep, read, write, terminal, MCP
+
+### Ask mode (read-only exploration)
+No edits. The agent can search and read code but cannot modify anything. Use this for understanding, not doing.
+
+- The agent can still search the codebase index and read files
+- Useful for onboarding to unfamiliar code, planning before acting, or research
+- Hover a code block in the response → click "Apply" to push it into a file (the one write-like action)
+
+### Plan mode (review before execution)
+Agent proposes a numbered step-by-step plan before touching any code. You review, edit, or reject before it acts.
+
+- Use for: tasks with multiple valid approaches, anything where a wrong first step is expensive to undo
+- The plan becomes a record of intent (useful for PR descriptions)
+- After approval, the agent executes exactly the approved steps
+
+### Debug mode (hypothesis-driven)
+You give it a **symptom** (not a hypothesis). The agent investigates autonomously — adding logging, running commands, reading output, narrowing the cause.
+
+- Give it: "the PDF is empty when all sections are filled"
+- Don't give it: "I think the issue is in generateLatex" (that's your hypothesis — let it form its own)
+- Covered in depth in Part 3
+
+### Multitask mode (parallel agents)
+Runs multiple agent sessions concurrently. Each session has its own context and can work on independent tasks simultaneously.
+
+- Use for: implementing multiple unrelated features, running tests while coding, research + implementation in parallel
+- Each task gets its own thread — they don't share context
+- Results appear as they complete — you review each independently
+- Covered in depth in Part 3
+
+### Model selection — "explore cheap, commit expensive"
+
+Switch models with `Cmd+Shift+J` or in the model picker at the bottom of chat.
+
+| Task type | Recommended model tier | Why |
+|---|---|---|
+| Lookups, explanations, exploration | Fast model | Cheap, quick, good enough for reading |
+| Standard implementation, refactoring | Default model | Balanced quality/speed |
+| Complex architecture, tricky bugs, security review | Reasoning model | Needs deeper thinking, worth the latency |
+
+The key habit: **don't use your most expensive model for "how does this function work?"** — save it for "redesign this module to handle concurrent writes safely."
+
 ### The escalation pattern
 ```
-Ask:    "How should I restructure this module?"
-Plan:   "OK, plan the refactor" → review steps
-Agent:  approve the plan → it executes
+Ask:       "How should I restructure this module?"
+Plan:      "OK, plan the refactor" → review steps
+Agent:     approve the plan → it executes
 Multitask: kick off independent tasks in parallel while you keep working
 ```
-
-### Three tips most people miss
-1. **Apply, don't copy-paste** — hover a code block in Ask mode → click "Apply" to diff it into the right file
-2. **Switch models mid-conversation** — use a fast model for lookups, a reasoning model for complex logic
-3. **Start fresh when context gets stale** — if the model contradicts itself or references old code, `Cmd+L` → new thread
 
 ### The decision tree
 ```
@@ -149,10 +193,14 @@ Is it large/risky?                 → Plan mode → review → execute
 
 ### Demo (using the CV Builder app)
 ```
-1. Ask mode on src/lib/latex-generator.ts: "How does generateLatex assemble sections into the final document?"
+1. Ask mode: "How does generateLatex assemble sections into the final document?"
    → follow-up: "What happens if an optional section returns an empty string — does it leave a blank line?"
-2. Switch to Agent mode → "When a section is empty, ensure no extra blank line ends up between adjacent sections in src/lib/latex-generator.ts"
+2. Switch to Agent mode → "When a section is empty, ensure no extra blank line ends up
+   between adjacent sections in src/lib/latex-generator.ts"
 3. Show the diff Agent proposes → accept or reject
+4. Model switch: Cmd+Shift+J → switch to a reasoning model →
+   "Review this diff. Are there edge cases where two consecutive empty sections
+   would still leave a gap?"
 ```
 
 ---

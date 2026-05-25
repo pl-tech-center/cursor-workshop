@@ -28,12 +28,12 @@ The shift from **autocomplete → chat → agent** represents a fundamental chan
 - Switch to the **Agent** tab at the top
 - Agent mode = full autonomous multi-file execution loop
 
-### Ask → Edit → Plan → Agent — the escalation pattern
+### Ask → Plan → Agent → Multitask — the escalation pattern
 
-**Ask** — understand first. No edits made.  
-**Edit** — one file, diff in-place, with conversation history.  
+**Ask** — understand first. Read-only — no edits made.  
 **Plan** — Agent proposes a numbered step-by-step plan. You review and approve (or edit) before a single file is touched.  
-**Agent** — full autonomous execution: edits → runs tests → fixes errors → repeats.
+**Agent** — full autonomous execution: edits → runs tests → fixes errors → repeats.  
+**Multitask** — multiple parallel agent sessions running concurrently on independent tasks.
 
 A common pattern:
 ```
@@ -177,11 +177,13 @@ It stops being true when:
 
 ## 3.4 Debugging with AI — Including Debug Mode (10 min)
 
+Debugging with AI follows a **layered approach** — escalate from quick fixes to full investigation as needed.
+
 ### Layer 1: Inline fix from lint errors
 ```
 Click the red underline → lightbulb → "Fix with AI"
 ```
-Fastest path for type errors and lint violations.
+Fastest path for type errors and lint violations. Zero context switching — stays in the editor.
 
 ### Layer 2: Terminal error → fix
 ```
@@ -190,28 +192,49 @@ Fastest path for type errors and lint violations.
 → Cursor reads the terminal output and proposes a fix
 ```
 
-### Layer 3: AI Debug mode
-Debug mode puts Cursor in a **directed problem-solving loop**. The agent:
-- Sets breakpoints or adds logging statements autonomously
-- Runs the program and reads the output
-- Forms a hypothesis and tests it
-- Iterates until the bug is isolated or a fix is proposed
+Best for: build errors, test failures with clear stack traces, missing imports. The agent sees exactly what you see in the terminal.
 
+### Layer 3: Debug mode — hypothesis-driven investigation
+
+Debug mode puts Cursor in a **directed problem-solving loop**. The critical difference from regular Agent mode: you give it a **symptom and reproduction condition**, not a hypothesis. Let the agent form its own hypothesis and test it.
+
+**What the agent does in Debug mode:**
+- Reads the relevant source files to understand the code path
+- Adds strategic logging or assertions to narrow the cause
+- Runs the program and reads the output
+- Forms a hypothesis from the evidence
+- Tests the hypothesis by modifying code and re-running
+- Iterates until the bug is isolated and a fix is verified
+
+**Good Debug mode prompts:**
 ```
-Cmd+L → Agent tab →
 "Debug why the Review tab renders an empty PDF when the user has filled all required sections.
 The PDF compilation does not throw — it produces a 1-page output with only the contact block visible.
-
-Start by checking how @src/components/ReviewView.tsx wires the data into generateLatex,
-then trace through @src/lib/latex-generator.ts.
-
-Run npm test to confirm your fix doesn't break anything."
+The issue started after the last commit to latex-generator.ts."
 ```
 
-Key difference from normal Chat debugging: you give it the **symptom and reproduction condition**, not a hypothesis. Let it form the hypothesis.
+```
+"Debug: npm test passes locally but generateExperience returns unexpected output when
+the entry has isCurrent=true and endDate is null. The test expects 'Present' but gets ''."
+```
+
+**Bad Debug mode prompts:**
+```
+"I think the bug is in line 42 of latex-generator.ts — fix it"
+→ This bypasses the investigation. If you already know the line, use Cmd+K.
+```
+
+**When to use Debug mode vs. regular Agent mode:**
+
+| Use Debug mode | Use Agent mode |
+|---|---|
+| You see a symptom but don't know the cause | You know what's broken and how to fix it |
+| The bug spans multiple files | The fix is in one known location |
+| You need the agent to investigate and narrow down | You need the agent to implement a known fix |
+| Intermittent or hard-to-reproduce issues | Clear, deterministic failures |
 
 ### Layer 4: Compiler / WASM error → root cause
-For pdfTeX compile errors:
+For pdfTeX compile errors or runtime WASM issues, paste the log directly:
 ```
 "Here is the LaTeX compilation log from pdf-compiler.ts:
 
@@ -221,18 +244,31 @@ The error fires only when a user enters bullet points containing percent signs.
 The service is @src/lib/pdf-compiler.ts. Find the escape gap."
 ```
 
+The agent can reason about LaTeX compilation errors even without running the WASM compiler itself — it traces from user input through the escape layer to the generated `.tex` string.
+
 ### Demo
 ```
-1. Introduce a subtle bug in @src/lib/latex-escape.ts (e.g., remove the percent-sign replacement)
-2. Show the symptom: npm test fails on a specific assertion; manually entering "100% growth" in
-   the Summary field produces a broken PDF
-3. Agent mode → "@Terminals the test output. Find the bug in src/lib/. Fix it. Re-run npm test."
-4. Watch it add logging → find the gap → patch latex-escape.ts → confirm tests pass
+1. Introduce a subtle bug: remove the percent-sign replacement in @src/lib/latex-escape.ts
+2. Show the symptom: npm test fails on a specific assertion; manually entering "100% growth"
+   in the Summary field produces a broken PDF
+3. Switch to Debug mode → "npm test is failing on the latex-escape tests. Also, entering
+   '100% growth' in the Summary field produces a broken PDF. The issue is somewhere in
+   src/lib/. Investigate and fix."
+4. Watch the agent:
+   - Read latex-escape.ts and the test file
+   - Identify the missing percent-sign rule
+   - Patch the file
+   - Re-run npm test → pass
+5. Show the difference: Agent would have just "fixed the test" — Debug mode investigated the root cause
 ```
 
 ---
 
-## 3.5 Test Generation (5 min)
+## 3.5 Test Generation & TDD with Agents (5 min)
+
+### The key principle: always reference an existing test
+
+If you let the agent invent its own test structure, you'll get inconsistent style across your test suite. **Always point at an existing test file** so it matches your patterns.
 
 ### Generating tests that match your patterns
 ```
@@ -243,9 +279,17 @@ ampersands in the project name.
 Match the test style in @tests/unit/latex-generator.test.ts — especially the describe()/it()
 nesting and the fixture pattern at the top of the file."
 ```
-Always reference an existing test file — this prevents Cursor from inventing its own structure.
+
+**What to specify in the prompt:**
+- Which edge cases to cover (don't leave this to the agent — it will miss domain-specific cases)
+- Which test file to match (style, nesting, assertion patterns)
+- Whether to use fixtures, factories, or inline data
+- Whether to run the tests after writing them
 
 ### TDD loop with Agent mode
+
+The agent can write tests first, then implement until they pass — true red-green-refactor:
+
 ```
 Cmd+L → Agent tab →
 "I need a sortEntriesByDate<T extends { startDate: Date | null }>(entries: T[], direction: 'asc' | 'desc'): T[] helper.
@@ -254,9 +298,44 @@ Then implement in src/lib/sort-entries.ts until all tests pass.
 Cover: empty array, null startDate handled last, stable ordering for equal dates."
 ```
 
+The agent will:
+1. Create the test file with failing tests
+2. Create the implementation file
+3. Run `npm test` — see failures
+4. Iterate until all tests pass
+
 ### Coverage gap analysis
 ```
-"Find every exported function in src/lib/ that has no corresponding test in tests/unit/"
+"Find every exported function in src/lib/ that has no corresponding test in tests/unit/.
+List them as a table: function name | file | tested (yes/no)."
+```
+
+### Regression tests from bugs
+After fixing a bug, immediately ask for a regression test:
+```
+"The bug was: percent signs in user input broke the PDF.
+Add a regression test in @tests/unit/latex-escape.test.ts that ensures
+'100% growth' is properly escaped to '100\\% growth'. Use the existing test style."
+```
+
+### When agent-generated tests are dangerous
+
+| Risk | Mitigation |
+|---|---|
+| Tests that test the implementation, not the behaviour | Review: does the test break if you refactor internals? |
+| Assertions copied from current (buggy) output | Check: are the expected values independently correct? |
+| Missing edge cases the agent didn't think of | Always specify edge cases explicitly in your prompt |
+| Overly permissive assertions (`.toBeDefined()`) | Rule: "every assertion must check a specific value" |
+
+### Demo
+```
+1. Select generateCertifications() → "Write vitest cases matching the style in
+   @tests/unit/latex-generator.test.ts. Cover: empty array, single cert with all fields,
+   cert missing issueDate, cert with special characters in the name."
+2. Run npm test → watch them pass
+3. TDD: "I need a formatBulletPoints(text: string): string[] helper that splits on newlines,
+   trims whitespace, and drops empty lines. Write failing tests first, then implement."
+4. Coverage gap: "Find every untested export in src/lib/" → generate missing tests
 ```
 
 ---

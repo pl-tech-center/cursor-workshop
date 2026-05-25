@@ -198,15 +198,17 @@ specs/001-resume-builder/
 
 ## 4.4 MCP — Model Context Protocol (5 min)
 
-MCP extends Cursor with tools that let the AI interact with external systems — GitHub issues/PRs, Jira tickets, Confluence pages, Postgres queries, internal APIs, etc. MCP servers are lightweight local processes that expose tools the AI can call.
+MCP extends Cursor with **tools** that let the AI interact with external systems — GitHub issues/PRs, Jira tickets, Confluence pages, Postgres queries, internal APIs, etc. MCP servers are lightweight local processes that expose tools the AI can call.
 
 ```
-Cursor (AI) ←→ MCP Server ←→ External System
+Cursor (AI) ←→ MCP Server (local process) ←→ External System (GitHub, Jira, DB, etc.)
 ```
+
+Think of MCP as: "giving the agent hands that reach outside the codebase." Without MCP, the agent can only read/write local files and run terminal commands. With MCP, it can query databases, read tickets, open PRs, and call APIs — all within the same agentic loop.
 
 ### Setting up an MCP server
 
-`Cursor Settings` → `MCP` → Add server. Example: GitHub.
+`Cursor Settings` → `MCP` → Add server. Configuration lives in `.cursor/mcp.json`:
 
 ```json
 {
@@ -222,6 +224,21 @@ Cursor (AI) ←→ MCP Server ←→ External System
 }
 ```
 
+Once configured, the agent sees the server's tools in its tool list and can call them autonomously. You don't invoke MCP tools directly — the agent decides when to use them based on your prompt.
+
+### How the agent uses MCP tools
+
+The agent's decision flow:
+```
+Your prompt: "Look at the open issues and fix the one about escape coverage"
+→ Agent sees github MCP tools are available
+→ Calls list_issues() → reads issue #7 → understands the bug
+→ Searches codebase → finds the gap in latex-escape.ts
+→ Implements fix → runs tests → calls create_pull_request()
+```
+
+You describe the **goal**; the agent picks which MCP tools to call and when.
+
 ### Workflow example (CV Builder)
 
 ```
@@ -235,34 +252,58 @@ This is the full loop — issue → reproduction → fix → test → PR — wit
 
 ### Other useful servers
 
-| Server | What it does |
+| Server | What it does | Common use case |
+|---|---|---|
+| `@modelcontextprotocol/server-github` | Issues, PRs, files, reviews | Issue → fix → PR loops |
+| `mcp-server-jira` | Tickets, transitions, comments | Read ticket context, update status |
+| `mcp-server-confluence` | Pages as context | Pull design docs into agent context |
+| `@modelcontextprotocol/server-postgres` | Read-only queries | "What does the schema look like?" |
+| `@notionhq/notion-mcp-server` | Notion pages and databases | Product specs as context |
+| `@anthropic/mcp-server-fetch` | Generic HTTP fetch | Read any URL content |
+
+### Lean MCP setup — critical guidelines
+
+MCP tools consume context. Every active server adds its tool descriptions to the prompt. This has real costs:
+
+| Concern | Guideline |
 |---|---|
-| `@modelcontextprotocol/server-github` | Issues, PRs, files |
-| `mcp-server-jira` | Tickets, transitions, comments |
-| `mcp-server-confluence` | Pages as context |
-| `@modelcontextprotocol/server-postgres` | Read-only queries |
-| `@notionhq/notion-mcp-server` | Notion docs |
+| Context bloat | ~40-tool soft limit. Disable servers you're not using for the current task |
+| Security | Tokens via env vars only. Commit `.cursor/mcp.json.example` with placeholders. Never commit real tokens. |
+| Permissions | Read-only / fine-grained / repo-scoped tokens by default. Minimize write access. |
+| Trust | Audit community server source before adding — they run with your credentials and can execute arbitrary code |
+| Debugging | If an MCP tool fails, check `Cursor Settings` → `MCP` → server status. Restart if needed. |
 
-### Lean MCP setup
-
-- ~40-tool soft limit before context bloat — disable servers you're not using
-- Tokens via env vars; commit a `.cursor/mcp.json.example` with placeholders only
-- Read-only / fine-grained / repo-scoped tokens by default
-- Audit community server source before adding — they run with your credentials
+### Team sharing pattern
+```
+your-repo/
+├── .cursor/
+│   ├── mcp.json              ← gitignored (has real tokens)
+│   └── mcp.json.example      ← committed (placeholders + setup instructions)
+```
 
 ---
 
-## 4.5 Cursor Automations & Integrations (3 min)
+## 4.5 Cursor Automations & Integrations (5 min)
 
 ### Cursor Automations
 
-Automations let you define **recurring or event-driven agent workflows** — available directly in the Agents Window alongside your regular agents (not just on cursor.com).
+Automations let you define **recurring or event-driven agent workflows** — available directly in the Agents Window alongside your regular agents.
 
 **What you can set up:**
 - **Multi-repo automations** — attach multiple repos so an automation reasons across all required context (e.g., "when a PR lands in the API repo, update the OpenAPI client in the frontend repo")
 - **No-repo automations** — automations that don't need a codebase at all: a daily Slack digest agent, a product analytics summariser, a changelog drafter
 
 Automations sit at **Layer 6** of the capability stack — they close the loop between "agent does a task when I ask" and "agent does a task on a schedule or trigger."
+
+### Examples of automations
+
+| Automation | Trigger | What it does |
+|---|---|---|
+| Daily standup digest | Schedule (9am) | Summarises yesterday's PRs, open issues, blockers |
+| Changelog drafter | On PR merge to main | Reads the diff and updates CHANGELOG.md |
+| Dependency updater | Weekly schedule | Checks for outdated packages, opens update PRs |
+| Cross-repo sync | PR merge in repo A | Updates generated types/clients in repo B |
+| Security scanner | On PR open | Reviews new code for common vulnerabilities |
 
 ### Cursor in Jira
 
@@ -273,7 +314,34 @@ Cursor integrates directly with Jira. Two patterns:
 
 The agent uses your repo settings to find the codebase, works in a branch, and opens a PR — the same workflow as a background agent, but triggered from your issue tracker instead of the IDE.
 
+### The full automated lifecycle
+
+```
+Jira ticket created → assigned to Cursor
+→ Cloud agent reads ticket context
+→ Searches codebase, implements fix
+→ Commits to feature branch, opens PR
+→ Bug Bot reviews the PR automatically
+→ Human reviews last (with Bug Bot's comments as context)
+→ Merge → changelog automation updates CHANGELOG.md
+```
+
+This is the direction the industry is heading — humans review and approve; agents do the routine implementation.
+
 > This pairs well with the GitHub MCP from §4.4: Jira triggers the agent, the agent uses GitHub MCP to open the PR, Bug Bot reviews it. The human reviews last.
+
+### Bug Bot — automated PR review
+
+Bug Bot is Cursor's automated code reviewer. When enabled on a repo:
+- Runs automatically on every PR
+- Leaves inline comments on potential issues (bugs, style violations, security concerns)
+- Uses the same model quality as your Cursor chat — it understands the codebase
+- Comments appear before human reviewers see the PR
+
+**Setup:** Enable via your Cursor team settings → Bug Bot → select repos.
+
+**What it catches well:** logic errors, missing edge cases, inconsistent patterns, security issues in new code.  
+**What it misses:** domain-specific business logic errors, design decisions, "is this the right feature?"
 
 ---
 

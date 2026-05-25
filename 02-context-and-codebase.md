@@ -17,21 +17,37 @@ This is also why the top frustrations from the poll — hallucinations, shallow 
 
 ## 2.2 Codebase Indexing (10 min)
 
-Cursor indexes your entire codebase locally to enable semantic search.
+Cursor indexes your codebase to enable semantic search. Since `@Codebase` no longer exists as an explicit symbol, the index is now **the invisible backbone** — the agent searches it autonomously whenever it needs context. Understanding how the index works is the key to understanding why the agent sometimes finds the right code and sometimes doesn't.
 
 ### How it works
 - Runs once on project open, then incrementally on file changes
 - Creates embeddings of your code for semantic similarity search
-- Powers the "search codebase" capability in chat
+- The agent queries the index automatically when it determines it needs more context — you never trigger this explicitly
+- Also powers features like Tab autocomplete's multi-file awareness and next-edit prediction
 
 ### Checking index status
 `Cursor Settings` → `Features` → `Codebase Indexing` → shows file count and status
 
+> **Important:** If the index is incomplete or stale, the agent will miss relevant code. Always let indexing finish before starting a complex agent session — especially on a fresh clone.
+
 ### What gets indexed
-- All text files tracked by git
+- All text files tracked by git (source code, markdown, config files)
 - Respects `.gitignore` and `.cursorignore`
+- Binary files, images, and compiled output are excluded automatically
+
+### What affects search quality
+
+| Factor | Impact |
+|---|---|
+| File size | Very large files (>500 lines) get chunked — split them for better retrieval |
+| Naming conventions | Descriptive function/variable names improve semantic matches |
+| Code comments & docstrings | Help the index understand intent, not just syntax |
+| Stale index | After large refactors, give the incremental indexer a few seconds to catch up |
 
 ### `.cursorignore`
+
+Excludes files from both the index **and** from being read by the agent. Use it for large generated assets, secrets, and noise.
+
 ```
 # Example .cursorignore
 node_modules/
@@ -45,13 +61,30 @@ public/core/busytex/       # ~150 MB of WASM assets — keep out of the index
 secrets/
 ```
 
+### Large repo strategies
+- **Monorepos:** Open only the relevant sub-project as a workspace root — the index scopes to the workspace
+- **Multi-root workspaces:** Each root is indexed independently; the agent searches within the focused root
+- **Generated code:** Add generated directories to `.cursorignore` — they add noise without semantic value
+
+### When the agent doesn't find what you expect
+
+If the agent misses relevant code during a session:
+1. Check that indexing is complete (settings panel)
+2. Use explicit `@<filename>` or `@<folder>/` references to point it in the right direction
+3. Ask directly: "search the codebase for how X works" — this prompts the agent to search more aggressively
+4. For cross-cutting concerns, mention multiple related files with `@`
+
 ### Demo (using the CV Builder app)
 ```
-Cmd+L → "How does the app turn form data into a PDF?"
-→ Cursor searches semantically and surfaces the pipeline:
-   ResumeData → generateLatex() in src/lib/latex-generator.ts
-              → compilePdf() in src/lib/pdf-compiler.ts (texlyre-busytex Worker)
-              → Blob URL → <iframe> in src/components/ReviewView.tsx
+1. Show Codebase Indexing status in Settings — note file count
+2. Cmd+L → "How does the app turn form data into a PDF?"
+   → Agent searches the index autonomously and surfaces the pipeline:
+      ResumeData → generateLatex() in src/lib/latex-generator.ts
+                 → compilePdf() in src/lib/pdf-compiler.ts (texlyre-busytex Worker)
+                 → Blob URL → <iframe> in src/components/ReviewView.tsx
+3. Show .cursorignore — note that public/core/busytex/ (150 MB of WASM) is excluded
+4. Ask: "What WASM functions does pdf-compiler.ts call?"
+   → Agent finds the right file even without @Files, because the index has good embeddings for it
 ```
 
 ---
@@ -61,14 +94,22 @@ Cmd+L → "How does the app turn form data into a PDF?"
 The `@` symbol is the primary way to **explicitly pull context** into chat or Agent mode. Type `@` in any prompt to see options.
 
 ### `@Files` and `@Folders`
-Reference specific files or entire directories.
+Reference specific files or entire directories. This is your **most-used** context tool — the explicit, precise alternative to hoping the agent finds what it needs.
 
 ```
 "Refactor @src/lib/latex-generator.ts so that every section generator follows the same conditional-empty-string contract used by @src/lib/latex-generator.ts::generateSummary"
 ```
 
+```
+"Look at @src/components/ — are all form components following the same controlled-input pattern?"
+```
+
+**Tips:**
 - Drag-and-drop files into chat also works
-- Folders add all contained files (use sparingly for large folders)
+- Type `@` then start typing a filename — autocomplete narrows the list
+- Folders add all contained files (watch context usage on large folders)
+- Navigate deeper into folders with `/` after selecting one
+- When you know the exact files, `@Files` is always better than hoping the agent searches — it's cheaper on context and deterministic
 
 ### Codebase Search (implicit — no `@Codebase` symbol)
 
@@ -84,16 +125,23 @@ Best for: cross-cutting concerns, finding existing patterns, understanding unfam
 > **Tip:** If the agent isn't finding relevant code, use explicit `@Files` or `@Folders` references to point it in the right direction. You can also prompt it directly: "search the codebase for X".
 
 ### `@Docs`
-Reference official documentation for any library without copy-pasting.
+Reference indexed documentation for any library without copy-pasting. This is how you get framework-specific guidance that's more accurate than the model's training data.
 
 ```
 "@Docs Vitest — how do I run a single test file with the @web reporter for nicer diffs?"
 "@Docs shadcn/ui Tabs — what props do I need to control the active tab from parent state?"
 ```
 
-- Cursor fetches and caches docs pages
-- Works with any URL: `@Docs https://ui.shadcn.com/docs/components/tabs`
-- Add frequently used libraries in `Cursor Settings` → `Features` → `Docs`
+**Setup:**
+- Cursor ships with pre-indexed docs for popular libraries (React, TypeScript, Vitest, Tailwind, etc.)
+- Add custom documentation sources: `@Docs` → `Add new doc` → paste a URL
+- Frequently used libraries: add them in `Cursor Settings` → `Features` → `Docs` so they're always available
+
+**When to use @Docs vs. web search:**
+- `@Docs` — stable API references, established libraries with indexed documentation
+- Natural language ("check the latest docs for X") — bleeding-edge libraries, recent changelogs, community discussions
+
+**Gotcha:** If `@Docs` returns outdated information, re-index the source in Settings or re-add the URL.
 
 ### Web search (implicit — no `@Web` symbol)
 
@@ -106,41 +154,97 @@ The explicit `@Web` symbol has been removed. In Agent mode, the agent can search
 
 Use when: the model's training data may be outdated, or you need current issues/PRs.
 
-### `@Git`
-Reference git history for context.
+### `@Commit (Diff of Working State)` and `@Branch (Diff with Main)`
+Git context is now surfaced through two specific symbols rather than a generic `@Git`:
 
+**`@Commit (Diff of Working State)`** — attaches your uncommitted changes (staged + unstaged) as context.
 ```
-"@Git what changed in the last 5 commits to this file?"
-"@Git show the diff for commit abc1234"
+"@Commit (Diff of Working State) — review these changes before I commit. Anything I missed?"
+"@Commit (Diff of Working State) — write a commit message for these changes"
 ```
+
+**`@Branch (Diff with Main)`** — attaches the full diff of your current branch vs. main.
+```
+"@Branch (Diff with Main) — summarise what this branch does for a PR description"
+"@Branch (Diff with Main) — are there any inconsistencies across these changes?"
+```
+
+These are particularly useful for:
+- Pre-commit self-review (catch forgotten files, inconsistencies)
+- Generating PR descriptions from the full branch diff
+- Understanding what changed since branching
 
 ### `@Terminals`
-Pull in the output of your terminal(s).
+Pull in the output of your terminal(s). Essential for the "run → fail → fix" loop.
 
 ```
 # Run failing test, then:
 "@Terminals — why is this vitest test failing?"
+"@Terminals — the build failed. What's wrong?"
+```
+
+The agent reads the last N lines of stdout/stderr from your integrated terminal. No need to copy-paste error output.
+
+### `@Past Chats`
+Reference context from a previous conversation. Useful when building on earlier work without re-explaining.
+
+```
+"@Past Chats — in the chat where we discussed the LaTeX escape coverage, you identified
+a gap with tilde characters. Implement that fix now."
+```
+
+### `@Browser`
+Attach context from Cursor's built-in browser. Useful for capturing visual state or error pages.
+
+```
+"@Browser — the app is showing this layout. The spacing between sections is too tight.
+Fix the margin in the component that renders section headers."
 ```
 
 ### Context reference cheat sheet
 
 | Symbol | What it references |
 |---|---|
-| `@Files` | Specific file(s) |
-| `@Folders` | All files in a directory |
-| ~~`@Codebase`~~ | Removed — codebase search is now implicit (agent searches automatically) |
-| `@Docs` | Library documentation |
-| ~~`@Web`~~ | Removed — agent searches the web automatically when needed |
-| `@Git` | Git history / diffs |
-| `@Terminals` | Terminal output |
-| `@Lint` | Current lint errors |
+| `@<filename>` | Specific file(s) — type `@` then start typing |
+| `@<folder>/` | All files in a directory (navigate deeper with `/`) |
+| `@Docs` | Indexed library documentation |
+| `@Terminals` | Terminal output (stdout/stderr) |
+| `@Commit (Diff of Working State)` | Uncommitted changes (staged + unstaged) |
+| `@Branch (Diff with Main)` | Full branch diff vs. main |
+| `@Past Chats` | Context from a previous conversation |
+| `@Browser` | Context from the built-in browser |
+
+**Implicit (no symbol needed):**
+
+| Capability | How to trigger |
+|---|---|
+| Codebase search | Ask in natural language — agent searches the index automatically |
+| Web search | Ask about current info — agent searches the web when needed |
 
 ### Demo sequence (using the CV Builder app)
 ```
-1. "How does generateLatex assemble sections in the correct order? Where is the order defined?" → agent searches the index automatically
-2. "@Files @src/lib/latex-generator.ts — add a generator for a Languages section (free-text input, conditional). Match the contract used by generateSkills."
-3. "@Docs Vitest — show me the recommended pattern for testing a function that returns a multi-line string with deterministic indentation."
-4. "@Git — what changed in src/lib/latex-generator.ts in the last week? Summarise the intent."
+1. Implicit codebase search:
+   "How does generateLatex assemble sections in the correct order? Where is the order defined?"
+   → Agent searches the index automatically — no @Codebase needed
+
+2. Explicit file reference:
+   "@src/lib/latex-generator.ts — add a generator for a Languages section (free-text input,
+   conditional). Match the contract used by generateSkills."
+
+3. Documentation lookup:
+   "@Docs Vitest — show me the recommended pattern for testing a function that returns
+   a multi-line string with deterministic indentation."
+
+4. Git context:
+   "@Commit (Diff of Working State) — review these changes. Does the new generator match
+   the existing pattern? Write a commit message."
+
+5. Terminal feedback loop:
+   Run `npm test` in the terminal →
+   "@Terminals — two assertions are failing. Fix the expected output in the test file."
+
+6. Branch summary:
+   "@Branch (Diff with Main) — summarise everything we did in this session for a PR description."
 ```
 
 ---
@@ -237,11 +341,25 @@ globs: ["tests/**/*.test.ts"]
 4. Show that rules are committed to git → new team members get them automatically (and the spec-kit skills too)
 ```
 
+### Context window impact
+
+Rules consume context on every request. This is the trade-off: more rules = more consistent output, but also less room for actual code context.
+
+| Approach | Context cost | When to use |
+|---|---|---|
+| One `alwaysApply` pointer rule (like `specify-rules.mdc`) | Minimal (~50 tokens) | Always — points the agent at the plan |
+| 3-4 glob-scoped rules | Low (~200 tokens each, only when relevant files are touched) | Style enforcement per file type |
+| One massive `general.mdc` with 40 rules | High (~2000+ tokens on every request) | Avoid — split into scoped rules instead |
+
+**Rule of thumb:** If your rules total exceeds ~1000 tokens on a given request, you're eating into the context the agent needs for the actual code. Prefer targeted glob-scoped rules over one huge always-on file.
+
 ### Tips
 - Start simple — add rules when you notice Cursor generating code that doesn't match your style
 - Rules over ~500 lines get ignored; keep them focused
-- Use `@rules` in chat to explicitly cite a rule
+- Each rule should be a specific, testable instruction — not vague guidance
 - **Rules are living documentation** — treat them like code (PRs, review, iteration)
+- When Cursor ignores a rule, it's usually too long or contradicts another rule — simplify
+- Glob rules only fire when matching files are in context — cheap and precise
 
 ---
 
