@@ -1,7 +1,7 @@
 # Part 2 — Context & Codebase Intelligence
 **Presenter B · ~35 minutes**
 
-> All demos use the CV Builder app at `/Users/tmarfe/nike/cv-builder`. Open it in Cursor before this section starts.
+> All demos use the CV Builder app at `../cv-builder`. Open it in Cursor before this section starts.
 
 ---
 

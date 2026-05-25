@@ -2,7 +2,7 @@
 
 A hands-on workshop for engineers who already use Cursor and want to move from ad-hoc usage to deliberate, high-leverage workflows. The session goes deep on context mastery, mode and model selection, agent mode, parallelism, **Spec-Kit-driven development**, and team practices.
 
-Every demo and exercise runs against a real working app — the **CV Builder** (`/Users/tmarfe/nike/cv-builder/`), a browser-based resume builder built end-to-end with Cursor and Spec-Kit. The app is the through-line of the workshop: you'll explore it, extend it, and add new features to it using every Cursor pattern we cover.
+Every demo and exercise runs against a real working app — the **CV Builder** (`../cv-builder/`), a browser-based resume builder built end-to-end with Cursor and Spec-Kit. The app is the through-line of the workshop: you'll explore it, extend it, and add new features to it using every Cursor pattern we cover.
 
 **Duration:** ~3 hours (including exercises and Q&A)
 **Format:** Live demo + hands-on exercises
@@ -50,7 +50,7 @@ Based on the 24-person poll, the session is optimized for:
 A browser-only resume builder. Users fill tabbed forms (Contact, Experience, Education, Skills, Summary, Projects, Certifications), preview a PDF, and download it. All compilation is client-side via a WASM build of pdfTeX.
 
 ```
-cv-builder/                          (separate repo at /Users/tmarfe/nike/cv-builder)
+cv-builder/                          (separate repo — cloned alongside this one)
 ├── DESIGN.md                        ← Apple-inspired design system (referenced by every UI task)
 ├── resume.tex                       ← Original LaTeX template — visual specification only
 ├── package.json                     ← React 18 + Vite 6 + Tailwind 4 + shadcn/ui + Vitest
@@ -133,9 +133,9 @@ Reinforced throughout the workshop:
 
 1. Ensure Cursor is up to date (Help → Check for Updates)
 2. Clone the workshop repo (this folder — chapter notes + exercises)
-3. Clone the demo app: it lives at `/Users/tmarfe/nike/cv-builder/` for this workshop. Install and verify:
+3. Clone the demo app alongside this repo and install. You can run `./setup.sh` to do this automatically, or manually:
    ```bash
-   cd /Users/tmarfe/nike/cv-builder
+   cd ../cv-builder
    npm install
    npm run download:tex-assets       # one-time download of TeX Live WASM (~150 MB)
    npm test                          # vitest — all unit tests should pass
@@ -194,7 +194,7 @@ cursor-workshop/
 ├── 03-agentic-coding.md         ← Part 3: Presenter A
 ├── 04-advanced-workflows.md     ← Part 4: Presenter B
 └── exercises/
-    └── README.md                ← All exercises (ex1–ex5) — run against /Users/tmarfe/nike/cv-builder
+    └── README.md                ← All exercises (ex1–ex5) — run against ../cv-builder
 ```
 
-The demo app lives in a separate repo: **`/Users/tmarfe/nike/cv-builder/`**. Open it in a second Cursor window alongside this workshop repo for the live demos and exercises.
+The demo app lives in a separate repo: **`../cv-builder/`**. Open it in a second Cursor window alongside this workshop repo for the live demos and exercises.

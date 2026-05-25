@@ -3,7 +3,7 @@
 
 > We're assuming everyone has completed the pre-workshop setup and tried Tab autocomplete, `Cmd+K`, and Chat. This section is about the non-obvious depth behind each feature — the behaviours most engineers miss after months of daily use.
 >
-> **All demos use the CV Builder app** at `/Users/tmarfe/nike/cv-builder`. Open it in Cursor before this section starts.
+> **All demos use the CV Builder app** at `../cv-builder`. Open it in Cursor before this section starts.
 
 ---
 

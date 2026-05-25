@@ -2,11 +2,11 @@
 
 Hands-on exercises to reinforce each section. Each exercise is 5–10 minutes. Do them solo or in pairs.
 
-> **All exercises run against the CV Builder app** at `/Users/tmarfe/nike/cv-builder/`. Open it in Cursor before you start. The app is a browser-only resume builder: tabbed forms → pure TypeScript LaTeX generators → client-side WASM pdfTeX → PDF preview + download. Stack: React 18 + TypeScript 5 + Vite 6 + Tailwind 4 + shadcn/ui + Vitest.
+> **All exercises run against the CV Builder app** at `../cv-builder/`. Open it in Cursor before you start. The app is a browser-only resume builder: tabbed forms → pure TypeScript LaTeX generators → client-side WASM pdfTeX → PDF preview + download. Stack: React 18 + TypeScript 5 + Vite 6 + Tailwind 4 + shadcn/ui + Vitest.
 >
 > Before starting:
 > ```bash
-> cd /Users/tmarfe/nike/cv-builder
+> cd ../cv-builder
 > npm install
 > npm run download:tex-assets   # one-time, ~150 MB of TeX Live WASM
 > npm test                      # should be all green before you begin
@@ -20,7 +20,7 @@ Hands-on exercises to reinforce each section. Each exercise is 5–10 minutes. D
 
 ### 1a. Next-edit prediction (Tab)
 1. Open `src/lib/types.ts`
-2. Add a new field `seniority: 'junior' | 'mid' | 'senior' | 'staff' | 'principal'` to the `ExperienceEntry` interface
+2. Add a new field `employmentType: 'full-time' | 'part-time' | 'contract' | 'freelance' | 'internship'` to the `ExperienceEntry` interface
 3. Watch Cursor suggest matching updates as you tab through:
    - `makeExperience()` in `src/App.tsx` and `src/components/ExperienceForm.tsx`
    - The `experienceEntry` fixture in `tests/unit/latex-generator.test.ts`
@@ -154,7 +154,7 @@ The CV Builder ships exactly one rule: `.cursor/rules/specify-rules.mdc`. It's `
 5. Open the app and verify both sections show up in the PDF
 
 ### 4b. Worktree parallel work
-1. From `/Users/tmarfe/nike/cv-builder/`:
+1. From the `cv-builder` repo:
    ```bash
    git worktree add ../cv-builder-compact-mode feature/compact-mode
    cursor ../cv-builder-compact-mode

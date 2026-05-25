@@ -3,7 +3,7 @@
 
 > This is the **#1 requested topic** from the poll. 71% of attendees want sub-agents, worktrees, and background agents — this section is the longest of the four for that reason.
 >
-> All demos and exercises target the CV Builder app at `/Users/tmarfe/nike/cv-builder`.
+> All demos and exercises target the CV Builder app at `../cv-builder`.
 
 ---
 
