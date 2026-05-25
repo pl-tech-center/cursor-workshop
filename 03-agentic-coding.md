@@ -344,11 +344,38 @@ Add a regression test in @tests/unit/latex-escape.test.ts that ensures
 
 > **#1 requested topic — 71% of attendees want this.** This is the headline section.
 
-### Sub-agents — agents spawning agents
+### Sub-agents — what they are
 
-In Agent mode, Cursor can spawn **child sub-agents** to handle isolated sub-tasks in parallel, then collect their results. You see this in the agent's reasoning output as it delegates.
+Sub-agents are specialized AI assistants that the parent agent can delegate tasks to. Each sub-agent operates in its **own context window**, handles specific work, and returns a result to the parent. This gives you:
 
-You can also orchestrate this explicitly:
+- **Context isolation** — long research or exploration doesn't consume the main conversation's context
+- **Parallel execution** — multiple sub-agents run simultaneously
+- **Specialized expertise** — each sub-agent can have custom prompts, tools, and even a different model
+- **Cost efficiency** — sub-agents can use faster/cheaper models for context-heavy work
+
+### Built-in sub-agents
+
+Cursor includes three built-in sub-agents that fire automatically — you don't configure them:
+
+| Sub-agent | Purpose | Why it's isolated |
+|---|---|---|
+| **Explore** | Searches and analyses the codebase | Exploration generates large intermediate output that would bloat the main context. Uses a faster model for many parallel searches. |
+| **Bash** | Runs series of shell commands | Command output is verbose. Isolating it keeps the parent focused on decisions, not logs. |
+| **Browser** | Controls browser via MCP tools | DOM snapshots and screenshots are noisy. The sub-agent filters down to relevant results. |
+
+You'll see these in action any time the agent decides to search the codebase, run a command, or interact with a browser — it's spawning a sub-agent under the hood.
+
+### Foreground vs. background sub-agents
+
+| Mode | Behaviour | Best for |
+|---|---|---|
+| **Foreground** | Blocks until complete. Returns the result immediately. | Sequential tasks where the parent needs the output before proceeding. |
+| **Background** | Returns immediately. Sub-agent works independently. | Long-running tasks or parallel workstreams. |
+
+### Automatic delegation
+
+The agent spawns sub-agents automatically based on task complexity. You can also trigger it explicitly by describing parallel work:
+
 ```
 Cmd+L → Agent tab →
 "Add Languages and Awards sections to the CV Builder.
@@ -366,6 +393,112 @@ Complete each independently, then reconcile the results."
 ```
 
 Best practice: give each sub-task a **clean scope boundary** so sub-agents don't conflict on the same files.
+
+### Custom sub-agents — `.cursor/agents/`
+
+This is the power feature. You can define **reusable, project-specific sub-agents** as markdown files:
+
+```
+.cursor/agents/
+├── verifier.md        ← Validates completed work — catches "marked done but broken"
+├── security-auditor.md ← Reviews code for vulnerabilities
+└── test-runner.md      ← Proactively runs tests and fixes failures
+```
+
+Each file is markdown with YAML frontmatter:
+
+```markdown
+---
+name: verifier
+description: Validates completed work. Use after tasks are marked done to confirm implementations are functional.
+model: inherit
+readonly: true
+---
+
+You are a skeptical validator. Your job is to verify that work claimed as complete actually works.
+
+When invoked:
+1. Identify what was claimed to be completed
+2. Check that the implementation exists and is functional
+3. Run relevant tests or verification steps
+4. Look for edge cases that may have been missed
+
+Be thorough and skeptical. Report:
+- What was verified and passed
+- What was claimed but incomplete or broken
+- Specific issues that need to be addressed
+```
+
+### Configuration fields
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `name` | string | From filename | Display name. Use lowercase + hyphens. |
+| `description` | string | — | Controls when the agent delegates automatically. Invest time here. |
+| `model` | string | `inherit` | `inherit` (same as parent) or a specific model ID |
+| `readonly` | boolean | `false` | If true, no file edits or state-changing shell commands |
+| `is_background` | boolean | `false` | If true, runs without blocking the parent |
+
+### Invocation patterns
+
+**Explicit:** Use the `/name` syntax in your prompt:
+```
+> /verifier confirm the auth flow is complete
+> /security-auditor review the payment module
+```
+
+**Natural language:** Mention the sub-agent by name:
+```
+> Use the verifier subagent to confirm all generators handle empty input correctly
+```
+
+**Automatic:** Write a good `description` field and the agent delegates on its own. Include phrases like "use proactively" or "always use for X" to encourage automatic delegation.
+
+### Common patterns for custom sub-agents
+
+**Verification agent** — independently validates that claimed work actually passes:
+```markdown
+---
+name: verifier
+description: Validates completed work. Use after tasks are marked done.
+readonly: true
+---
+```
+Catches the common problem where the agent marks tasks done but implementations are incomplete.
+
+**Orchestrator pattern** — a parent coordinates specialist sub-agents in sequence:
+```
+1. Planner analyzes requirements → creates technical plan
+2. Implementer builds the feature based on the plan
+3. Verifier confirms implementation matches requirements
+```
+
+**Security reviewer** — read-only audit of sensitive code paths:
+```markdown
+---
+name: security-auditor
+description: Security specialist. Use when implementing auth, payments, or handling sensitive data.
+model: inherit
+readonly: true
+---
+```
+
+### Performance and cost trade-offs
+
+| Benefit | Trade-off |
+|---|---|
+| Context isolation | Startup overhead (each sub-agent gathers its own context) |
+| Parallel execution | Higher token usage (multiple contexts simultaneously) |
+| Specialized focus | Latency (may be slower than main agent for simple tasks) |
+
+**Rule of thumb:** For quick, simple tasks, the main agent is faster. Sub-agents shine for complex, long-running, or parallel work where context isolation matters.
+
+### Anti-patterns to avoid
+
+- **Too many generic sub-agents** — 50+ sub-agents with vague descriptions. The agent won't know when to use them.
+- **Vague descriptions** — "Use for general tasks" gives no signal. Be specific: "Use when implementing LaTeX generators for new resume sections."
+- **Sub-agents for simple tasks** — If the task completes in one shot and doesn't need context isolation, just let the agent do it directly or use a skill.
+- **Overlapping scopes** — Two sub-agents editing the same file = conflicts.
 
 ### Multitask Mode — the agent as coordinator
 
@@ -387,6 +520,7 @@ Agent (coordinator): scopes each feature → launches background worker per feat
 | Technique | What it parallelises | Who decides the split? |
 |---|---|---|
 | Sub-agents | Different sub-tasks | You define the scope |
+| Custom sub-agents | Specialized work | The agent delegates based on description |
 | **Multitask Mode** | Different sub-tasks | The agent decomposes and coordinates |
 | Best-of-N | The same task, N attempts | You or the agent picks the winner |
 
@@ -398,10 +532,12 @@ Multitask Mode is the right choice when the agent has enough context to scope th
 |---|---|
 | Tasks with clear file boundaries | Tasks where files depend on each other |
 | Independent migrations (API → API) | Tightly coupled refactors |
+| Context-heavy research/exploration | Quick lookups |
 | Parallel test generation | Sequential workflow (step 2 depends on step 1) |
-| Bulk operations (rename, format, lint fix) | Architectural decisions requiring human review |
+| Independent verification of work | Architectural decisions requiring human review |
+| Bulk operations (rename, format, lint fix) | Simple single-file edits |
 
-### Live demo: sub-agent in action (using the CV Builder)
+### Live demo: sub-agents in action (using the CV Builder)
 ```
 Cmd+L → Agent tab →
 "Add Languages and Publications sections to the CV Builder in parallel.
@@ -420,6 +556,8 @@ Process Languages and Publications as separate sub-tasks. Run npm test at the en
 ```
 
 Watch Cursor spawn sub-agents — one for Languages, one for Publications — and work in parallel.
+
+Then: `/verifier confirm both sections render in the PDF and all tests pass`
 
 ---
 
@@ -589,18 +727,21 @@ This solves the "works on my machine" problem for background agents — they run
 1. **Agent mode** = goal-driven autonomous execution; always commit before running
 2. **AI output quality** = constrain the prompt, verify with self-critique, validate with tests
 3. **AI Debug mode** = give it the symptom, not the hypothesis
-4. **Sub-agents** = delegate **different** parallel subtasks with clean scope boundaries
-5. **Multitask Mode** = the agent as coordinator — it scopes, delegates, and synthesises across background workers
-6. **Worktrees** = true parallel agent workstreams across branches (and smaller PRs)
-7. **Best-of-N** = run **the same** task N times across models, pick the strongest diff — also the cheapest way to learn which model your codebase actually prefers
-8. **Background agents** = long-running tasks that continue without you; use development environments (Dockerfile config, multi-repo) for production-grade setups
+4. **Built-in sub-agents** (explore, bash, browser) fire automatically — you don't configure them
+5. **Custom sub-agents** (`.cursor/agents/`) = reusable specialists committed alongside code — verifier, security auditor, test runner
+6. **Multitask Mode** = the agent as coordinator — it scopes, delegates, and synthesises across background workers
+7. **Worktrees** = true parallel agent workstreams across branches (and smaller PRs)
+8. **Best-of-N** = run **the same** task N times across models, pick the strongest diff — also the cheapest way to learn which model your codebase actually prefers
+9. **Background agents** = long-running tasks that continue without you; use development environments (Dockerfile config, multi-repo) for production-grade setups
 
 ### Common mistakes
 - Giving overlapping file scopes to parallel agents — they will conflict
+- Creating too many generic sub-agents with vague descriptions — start with 2-3 focused ones
 - Using background agents for tasks that require local secrets or running services
 - Not committing before any agent task — you need a clean diff to review
 - Running agent mode with a vague prompt — the more specific, the less rework
 - Accepting agent output without reading the diff — "plausible but wrong" is the biggest risk
+- Using sub-agents for tasks that don't need context isolation — overhead without benefit
 
 ### Safety note
 > `git worktree` leaves extra directories on disk. Clean up with `git worktree remove <path>` when done.
