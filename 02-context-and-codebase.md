@@ -46,7 +46,7 @@ Cursor indexes your codebase to enable semantic search. Since `@Codebase` no lon
 
 ### `.cursorignore`
 
-Excludes files from both the index **and** from being read by the agent. Use it for large generated assets, secrets, and noise.
+Excludes files from both the index **and** from being read by the agent. Use it for build artifacts, large bundled assets, secrets, and noise.
 
 ```
 # Example .cursorignore
@@ -62,9 +62,9 @@ secrets/
 ```
 
 ### Large repo strategies
-- **Monorepos:** Open only the relevant sub-project as a workspace root — the index scopes to the workspace
-- **Multi-root workspaces:** Each root is indexed independently; the agent searches within the focused root
-- **Generated code:** Add generated directories to `.cursorignore` — they add noise without semantic value
+- **Monorepos:** Only open workspace folders get indexed. Either open just the package(s) you need, or open the monorepo root and use `.cursorignore` to exclude packages you aren't working on
+- **Multi-root workspaces:** Each root is indexed independently, but Agent can search **all** open roots — not just the folder of the active file. Use `@Folders` or `.cursorignore` when cross-package noise is a problem
+- **Build & package-generated output** (not AI-written code): Exclude artifacts produced by your toolchain — e.g. `dist/` / `.next/` (JS/TS), `__pycache__/` / `*.egg-info/` / `*_pb2.py` (Python), Maven `target/` / Gradle `build/` (Java), `*.pb.go` / `mock_*.go` (Go). They add noise and slow indexing without helping semantic search. Use `.cursorignore` to exclude from both the index and agent access, or `.cursorindexingignore` when you still want the agent to read those files on demand but keep them out of search results
 
 ### When the agent doesn't find what you expect
 
