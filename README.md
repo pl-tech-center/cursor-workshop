@@ -4,9 +4,9 @@ A hands-on workshop for engineers who already use Cursor and want to move from a
 
 Every demo and exercise runs against a real working app — the **CV Builder** (`../cv-builder/`), a browser-based resume builder built end-to-end with Cursor and Spec-Kit. The app is the through-line of the workshop: you'll explore it, extend it, and add new features to it using every Cursor pattern we cover.
 
-**Duration:** ~3 hours (including exercises and Q&A)
-**Format:** Live demo + hands-on exercises
-**Audience:** Engineers with basic Cursor experience (can use Tab autocomplete, `Cmd+K`, and Chat)
+**Duration:** ~3 hours (including exercises and Q&A)  
+**Format:** Live demo + hands-on exercises  
+**Audience:** Engineers with basic Cursor experience (can use Tab autocomplete, `Cmd+K`, and Chat)  
 **Prereqs:** See [Pre-Workshop Setup](#pre-workshop-setup) below — includes a self-paced orientation for anyone new to Cursor
 
 ---
@@ -166,12 +166,12 @@ If you haven't used Cursor before (or have only tried it once or twice), please 
 
 **3. Understand the modes (~5 min)**
 
-The chat panel (`Cmd+L`) has tabs at the top — switch between them:
+The chat panel (`Cmd+L`) has a mode selector — switch between them:
+- **Agent** — autonomous multi-file edits (the default workhorse — we'll go deep on this)
 - **Ask** — Q&A, explanations (read-only)
-- **Edit** — proposes diffs to the current file
-- **Agent** — autonomous multi-file edits (the real power — we'll go deep on this)
 - **Plan** — Agent proposes a plan for your approval before acting
 - **Debug** — symptom-driven autonomous debugging
+- **Multitask** — parallel agent sessions running concurrently
 
 **4. Browse the Spec-Kit artifacts (~5 min)**
 

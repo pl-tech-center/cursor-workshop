@@ -70,16 +70,18 @@ Reference specific files or entire directories.
 - Drag-and-drop files into chat also works
 - Folders add all contained files (use sparingly for large folders)
 
-### `@Codebase`
-Triggers a semantic search across the entire indexed codebase.
+### Codebase Search (implicit — no `@Codebase` symbol)
+
+The explicit `@Codebase` symbol has been removed. Codebase search is now **automatic** — the agent searches the semantic index on its own when it determines context is needed. You don't need to (and can't) trigger it manually with an `@` mention.
 
 ```
-"@Codebase How does the app turn form data into a PDF?"
+"How does the app turn form data into a PDF?"
+→ The agent autonomously searches the index and surfaces relevant files
 ```
 
-Best for: cross-cutting concerns, finding existing patterns, understanding unfamiliar code.
+Best for: cross-cutting concerns, finding existing patterns, understanding unfamiliar code — just ask in natural language.
 
-> **Note:** In Agent mode, codebase search happens automatically — the agent decides when to search the index without you typing `@Codebase`. The explicit symbol is still useful in Ask/Chat mode, or in Agent mode when you want to force a search the agent didn't initiate on its own.
+> **Tip:** If the agent isn't finding relevant code, use explicit `@Files` or `@Folders` references to point it in the right direction. You can also prompt it directly: "search the codebase for X".
 
 ### `@Docs`
 Reference official documentation for any library without copy-pasting.
@@ -93,11 +95,13 @@ Reference official documentation for any library without copy-pasting.
 - Works with any URL: `@Docs https://ui.shadcn.com/docs/components/tabs`
 - Add frequently used libraries in `Cursor Settings` → `Features` → `Docs`
 
-### `@Web`
-Live web search — useful for recent information the model may not know.
+### Web search (implicit — no `@Web` symbol)
+
+The explicit `@Web` symbol has been removed. In Agent mode, the agent can search the web autonomously when it determines it needs current information. Just ask in natural language.
 
 ```
-"@Web texlyre-busytex 2026 — does the PdfLatex class support per-call timeout yet?"
+"Does texlyre-busytex 2026 support per-call timeout yet? Check the latest docs."
+→ The agent decides whether to search the web based on your question
 ```
 
 Use when: the model's training data may be outdated, or you need current issues/PRs.
@@ -110,12 +114,12 @@ Reference git history for context.
 "@Git show the diff for commit abc1234"
 ```
 
-### `@Terminal`
-Pull in the output of your last terminal command.
+### `@Terminals`
+Pull in the output of your terminal(s).
 
 ```
 # Run failing test, then:
-"@Terminal — why is this vitest test failing?"
+"@Terminals — why is this vitest test failing?"
 ```
 
 ### Context reference cheat sheet
@@ -124,16 +128,16 @@ Pull in the output of your last terminal command.
 |---|---|
 | `@Files` | Specific file(s) |
 | `@Folders` | All files in a directory |
-| `@Codebase` | Semantic search of indexed repo |
+| ~~`@Codebase`~~ | Removed — codebase search is now implicit (agent searches automatically) |
 | `@Docs` | Library documentation |
-| `@Web` | Live web search |
+| ~~`@Web`~~ | Removed — agent searches the web automatically when needed |
 | `@Git` | Git history / diffs |
-| `@Terminal` | Last terminal output |
+| `@Terminals` | Terminal output |
 | `@Lint` | Current lint errors |
 
 ### Demo sequence (using the CV Builder app)
 ```
-1. "@Codebase how does generateLatex assemble sections in the correct order? Where is the order defined?"
+1. "How does generateLatex assemble sections in the correct order? Where is the order defined?" → agent searches the index automatically
 2. "@Files @src/lib/latex-generator.ts — add a generator for a Languages section (free-text input, conditional). Match the contract used by generateSkills."
 3. "@Docs Vitest — show me the recommended pattern for testing a function that returns a multi-line string with deterministic indentation."
 4. "@Git — what changed in src/lib/latex-generator.ts in the last week? Summarise the intent."

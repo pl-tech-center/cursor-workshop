@@ -107,7 +107,7 @@ Watch Cursor:
 
 | Root cause | Your lever |
 |---|---|
-| Missing context | Attach files with `@Files`, use `@Codebase` |
+| Missing context | Attach files with `@Files`/`@Folders`, or ask the agent to search the codebase |
 | Wrong architecture/style | Add `.cursor/rules` (see Part 2) |
 | Stale conversation | Start a new chat thread |
 | Task too broad | Break into smaller, scoped agent sessions |
@@ -186,7 +186,7 @@ Fastest path for type errors and lint violations.
 ### Layer 2: Terminal error → fix
 ```
 1. Run a command that fails (e.g., `npm test` with a failing vitest assertion)
-2. In Chat: "@Terminal — fix the error"
+2. In Chat: "@Terminals — fix the error"
 → Cursor reads the terminal output and proposes a fix
 ```
 
@@ -226,7 +226,7 @@ The service is @src/lib/pdf-compiler.ts. Find the escape gap."
 1. Introduce a subtle bug in @src/lib/latex-escape.ts (e.g., remove the percent-sign replacement)
 2. Show the symptom: npm test fails on a specific assertion; manually entering "100% growth" in
    the Summary field produces a broken PDF
-3. Agent mode → "@Terminal the test output. Find the bug in src/lib/. Fix it. Re-run npm test."
+3. Agent mode → "@Terminals the test output. Find the bug in src/lib/. Fix it. Re-run npm test."
 4. Watch it add logging → find the gap → patch latex-escape.ts → confirm tests pass
 ```
 
@@ -256,7 +256,7 @@ Cover: empty array, null startDate handled last, stable ordering for equal dates
 
 ### Coverage gap analysis
 ```
-"@Codebase — find every exported function in src/lib/ that has no corresponding test in tests/unit/"
+"Find every exported function in src/lib/ that has no corresponding test in tests/unit/"
 ```
 
 ---

@@ -116,17 +116,18 @@ Chat (`Cmd+L`) has several modes. Switch between them with the toggle at the top
 
 | Mode | What it does | Best for |
 |---|---|---|
-| **Ask** | Conversation — explains, discusses | Understanding, planning, research |
-| **Edit** | Directly modifies the file you're in (diff in-place) | Targeted single-file rewrites |
-| **Agent** | Full autonomous multi-file execution loop | Features, refactors, scaffolding |
+| **Agent** | Full autonomous multi-file execution loop | Features, refactors, scaffolding — the default workhorse |
+| **Ask** | Read-only conversation — explains, discusses | Understanding code, research, exploration |
 | **Plan** | Agent proposes steps, you review before execution | Large tasks where mistakes are expensive |
 | **Debug** | Symptom-driven autonomous debugging | Bug investigation with breakpoints/logging |
+| **Multitask** | Parallel agent sessions running concurrently | Multiple independent tasks at once |
 
 ### The escalation pattern
 ```
-Ask:   "How should I restructure this module?"
-Plan:  "OK, plan the refactor" → review steps
-Agent: approve the plan → it executes
+Ask:    "How should I restructure this module?"
+Plan:   "OK, plan the refactor" → review steps
+Agent:  approve the plan → it executes
+Multitask: kick off independent tasks in parallel while you keep working
 ```
 
 ### Three tips most people miss
@@ -137,19 +138,21 @@ Agent: approve the plan → it executes
 ### The decision tree
 ```
 Is it one file?
-  → Small, targeted edit       → Cmd+K
-  → Need conversation/history  → Chat (Edit tab)
-  → Involves other files?      → Chat with @Files or Agent tab
-Does it touch multiple files?  → Agent tab (Cmd+L → Agent)
-Do you need to understand first? → Chat (Ask tab), then act
+  → Small, targeted edit           → Cmd+K
+  → Need conversation/history      → Agent mode (single prompt)
+  → Involves other files?          → Agent mode
+Does it touch multiple files?      → Agent mode (Cmd+L → Agent)
+Multiple independent tasks?        → Multitask mode
+Do you need to understand first?   → Ask mode, then switch to Agent
+Is it large/risky?                 → Plan mode → review → execute
 ```
 
 ### Demo (using the CV Builder app)
 ```
 1. Ask mode on src/lib/latex-generator.ts: "How does generateLatex assemble sections into the final document?"
    → follow-up: "What happens if an optional section returns an empty string — does it leave a blank line?"
-2. Switch to Edit mode on the same file → "When a section is empty, ensure no extra blank line ends up between adjacent sections"
-3. Apply the snippet from the Ask mode response using the Apply button
+2. Switch to Agent mode → "When a section is empty, ensure no extra blank line ends up between adjacent sections in src/lib/latex-generator.ts"
+3. Show the diff Agent proposes → accept or reject
 ```
 
 ---
@@ -159,8 +162,8 @@ Do you need to understand first? → Chat (Ask tab), then act
 ### Key takeaways
 1. **Tab** — follow the next-edit prediction for refactoring; use partial accept (`Cmd+→`) to cherry-pick
 2. **`Cmd+K`** — iterate with follow-up prompts; use it in the terminal too
-3. **Chat modes** — Ask → Edit → Plan → Agent is an escalation, not a random choice
-4. The decision tree (Cmd+K → Chat Edit → Agent) is the most important habit to build
+3. **Chat modes** — Ask → Plan → Agent → Multitask is an escalation, not a random choice
+4. The decision tree (Cmd+K → Agent → Multitask) is the most important habit to build
 
 ### Habits that separate heavy users from casual ones
 - Always follow the next-edit ghost text before reaching for find-and-replace

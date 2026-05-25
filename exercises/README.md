@@ -42,8 +42,9 @@ Hands-on exercises to reinforce each section. Each exercise is 5–10 minutes. D
 ## Exercise 2 — Context & `@` Symbols
 *After Part 2 · ~10 min*
 
-### 2a. `@Codebase` semantic search
-1. `Cmd+L` → `"@Codebase how does the app turn form data into a PDF? Walk me through the pipeline."`
+### 2a. Implicit codebase search
+1. `Cmd+L` → `"How does the app turn form data into a PDF? Walk me through the pipeline."`
+   (No `@Codebase` needed — the agent searches the codebase index automatically.)
 2. Note which files Cursor cites. Open them — is the pipeline correct? (Expected: `App.tsx` → `ReviewView.tsx` → `latex-generator.ts` → `pdf-compiler.ts` → `<iframe>`)
 
 ### 2b. Cross-file consistency with `@Files`
@@ -95,7 +96,7 @@ The CV Builder ships exactly one rule: `.cursor/rules/specify-rules.mdc`. It's `
 ### 3c. Debug with Agent mode
 1. Break something on purpose in `src/lib/latex-escape.ts` — e.g., comment out the `.replace(/%/g, '\\%')` line
 2. Run `npm test` — at least one assertion in `latex-escape.test.ts` and one in `latex-generator.test.ts` should fail
-3. `Cmd+L` → Agent tab → `"@Terminal — npm test is failing. Find the bug in src/lib/ and fix it. Re-run npm test."`
+3. `Cmd+L` → Agent tab → `"@Terminals — npm test is failing. Find the bug in src/lib/ and fix it. Re-run npm test."`
 4. Watch it read the failures, locate the regression, patch, and re-verify
 
 ### 3d. Improve a generator's robustness
