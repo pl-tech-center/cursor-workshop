@@ -26,7 +26,7 @@ Cursor indexes your codebase to enable semantic search. Since `@Codebase` no lon
 - Also powers features like Tab autocomplete's multi-file awareness and next-edit prediction
 
 ### Checking index status
-`Cursor Settings` → `Features` → `Codebase Indexing` → shows file count and status
+`Cursor Settings` → `Indexing & Docs` → shows file count and status
 
 > **Important:** If the index is incomplete or stale, the agent will miss relevant code. Always let indexing finish before starting a complex agent session — especially on a fresh clone.
 
