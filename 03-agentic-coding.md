@@ -93,6 +93,10 @@ Watch Cursor:
 - Say "match the existing patterns in the codebase" — it will look
 - Break very large features into multiple Agent sessions
 
+### UI tips for reading agent output
+- **Compact chat responses** — customise how much detail tool calls show in the chat panel: `Compact` (minimal — just outcomes), `Balanced` (default), or `Detailed` (full tool call output). Set it via the density toggle at the top of the chat. Use Compact when the agent is churning through many files and you only care about the result.
+- **Full-screen tabs** — press `Cmd+Shift+M` (or `Ctrl+Shift+M`) to maximise the right panel into a full-screen tab. Useful when reviewing a large diff or reading a long agent response without the sidebar competing for space. Press again to restore.
+
 ---
 
 ## 3.3 Taming AI Output Quality (10 min)
@@ -284,6 +288,31 @@ Complete each independently, then reconcile the results."
 
 Best practice: give each sub-task a **clean scope boundary** so sub-agents don't conflict on the same files.
 
+### Multitask Mode — the agent as coordinator
+
+Multitask Mode takes sub-agents further: the agent acts as a **coordinator**, proactively scoping work and delegating to multiple background workers in parallel. Instead of you spelling out the sub-tasks, the agent decomposes the request, spins up async workers, monitors progress, and synthesises results.
+
+```
+You: "Implement these three features and update all affected tests."
+Agent (coordinator): scopes each feature → launches background worker per feature
+                     → monitors completion → reconciles conflicts → runs tests
+```
+
+**When to reach for Multitask Mode:**
+- Independent features that can be implemented concurrently
+- Investigation + implementation running side-by-side (e.g., research an API while building the integration)
+- Parallel test generation across modules while you continue working
+
+**How it relates to sub-agents and Best-of-N:**
+
+| Technique | What it parallelises | Who decides the split? |
+|---|---|---|
+| Sub-agents | Different sub-tasks | You define the scope |
+| **Multitask Mode** | Different sub-tasks | The agent decomposes and coordinates |
+| Best-of-N | The same task, N attempts | You or the agent picks the winner |
+
+Multitask Mode is the right choice when the agent has enough context to scope the work itself — you describe the end state, it figures out the parallel plan.
+
 ### When sub-agents shine vs. when they don't
 
 | Good fit | Poor fit |
@@ -362,9 +391,9 @@ This produces 3-4 PRs of 200-500 lines each instead of one monster PR.
 Sub-agents + worktrees parallelise **different** sub-tasks. **Best-of-N** parallelises **the same** task across N attempts — usually with different models or different prompt framings — and lets you pick the best result.
 
 ```
-                            ┌── attempt 1 (Composer) ──► ../cv-builder-bon-1
-prompt: "refactor X" ──────►├── attempt 2 (Sonnet)   ──► ../cv-builder-bon-2
-                            └── attempt 3 (Gemini)   ──► ../cv-builder-bon-3
+                            ┌── attempt 1 (Composer 2.5) ──► ../cv-builder-bon-1
+prompt: "refactor X" ──────►├── attempt 2 (Sonnet)       ──► ../cv-builder-bon-2
+                            └── attempt 3 (Gemini)       ──► ../cv-builder-bon-3
                                                             │
                                                             ▼
                                                   pick best · cherry-pick · discard rest
@@ -391,7 +420,7 @@ the empty-filter logic live in one place. Constraints: keep the public
 generateLatex(data) signature; no new dependencies; existing tests must pass.
 
 Run three attempts in isolated worktrees. Use a different model for each
-(Composer, Sonnet, Gemini). Don't merge — show me each diff so I can pick."
+(Composer 2.5, Sonnet, Gemini). Don't merge — show me each diff so I can pick."
 ```
 
 ```
@@ -433,6 +462,15 @@ Cmd+L → Agent tab → click the "Background" toggle → describe the task → 
 - Read/write files, run tests, install packages
 - Commit changes to a branch and open a PR
 
+**Development environments for cloud agents:**
+
+Background agents run in configurable cloud environments. You can define:
+- **Dockerfile-based config** — specify the exact runtime (Node version, system dependencies, build tools) so the agent's environment matches your local/CI setup
+- **Multi-repo environments** — attach multiple repos so the agent can reason across service boundaries (e.g., frontend + backend + shared types)
+- **Environment governance** — admins can lock down allowed base images, restrict network access, and enforce security policies for all cloud agent runs in the org
+
+This solves the "works on my machine" problem for background agents — they run in the same environment your CI does.
+
 **What they cannot do (yet):**
 - Access resources not in the repo (no internal DB, no local secrets)
 - Interact with a running local server
@@ -473,9 +511,10 @@ Cmd+L → Agent tab → click the "Background" toggle → describe the task → 
 2. **AI output quality** = constrain the prompt, verify with self-critique, validate with tests
 3. **AI Debug mode** = give it the symptom, not the hypothesis
 4. **Sub-agents** = delegate **different** parallel subtasks with clean scope boundaries
-5. **Worktrees** = true parallel agent workstreams across branches (and smaller PRs)
-6. **Best-of-N** = run **the same** task N times across models, pick the strongest diff — also the cheapest way to learn which model your codebase actually prefers
-7. **Background agents** = long-running tasks that continue without you
+5. **Multitask Mode** = the agent as coordinator — it scopes, delegates, and synthesises across background workers
+6. **Worktrees** = true parallel agent workstreams across branches (and smaller PRs)
+7. **Best-of-N** = run **the same** task N times across models, pick the strongest diff — also the cheapest way to learn which model your codebase actually prefers
+8. **Background agents** = long-running tasks that continue without you; use development environments (Dockerfile config, multi-repo) for production-grade setups
 
 ### Common mistakes
 - Giving overlapping file scopes to parallel agents — they will conflict

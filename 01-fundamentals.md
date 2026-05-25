@@ -42,7 +42,7 @@ Cursor doesn't just complete what you're typing — it watches your edits and pr
 
 ### Live demo (using the CV Builder app)
 ```
-1. Open src/lib/types.ts → add a new field `priority: 'high' | 'normal'` to the ExperienceEntry interface
+1. Open src/lib/types.ts → add a new field `employmentType: 'full-time' | 'part-time' | 'contract' | 'freelance' | 'internship'` to the ExperienceEntry interface
    → Watch Cursor suggest updates everywhere ExperienceEntry is constructed:
      - makeExperience() in App.tsx and ExperienceForm.tsx
      - the experienceEntry test fixture in tests/unit/latex-generator.test.ts

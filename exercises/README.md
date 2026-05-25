@@ -177,7 +177,7 @@ The CV Builder ships exactly one rule: `.cursor/rules/specify-rules.mdc`. It's `
    - All existing vitest cases must still pass
    - Stay under the 200-line file cap (Constitution VI in plan.md)
    ```
-2. `Cmd+L` → Agent tab → `"Best-of-3: run the refactor above in three isolated worktrees. Use a different model for each attempt (Composer, Sonnet, and one more of your choice). Do not merge. Present each diff for review."`
+2. `Cmd+L` → Agent tab → `"Best-of-3: run the refactor above in three isolated worktrees. Use a different model for each attempt (Composer 2.5, Sonnet, and one more of your choice). Do not merge. Present each diff for review."`
 3. Read all three diffs side-by-side. Score each on:
    - Diff size relative to the task (smaller wins when constraints are met)
    - Style match against the rest of `src/lib/`
@@ -188,6 +188,19 @@ The CV Builder ships exactly one rule: `.cursor/rules/specify-rules.mdc`. It's `
    git worktree remove ../cv-builder-bon-1 ../cv-builder-bon-2 ../cv-builder-bon-3
    ```
 5. **Reflection:** did the most expensive model win? Often it doesn't. Note which model your codebase actually prefers — that's a calibration data point worth more than benchmarks.
+
+### 4d. (Bonus) Multitask Mode — let the agent coordinate
+1. Reset to a clean tree (`git stash`)
+2. `Cmd+L` → Agent tab → use this prompt:
+   ```
+   Add Languages, Awards, and Publications sections to the CV Builder.
+   Use Multitask Mode to parallelise the work — you decide how to split it.
+
+   Each section needs: interface in types.ts, form component, generator function
+   in latex-generator.ts, vitest cases, and wiring in App.tsx.
+   Follow existing patterns. Run npm test at the end.
+   ```
+3. Compare the experience to 4a where you explicitly defined the sub-tasks. Did the agent make reasonable scoping decisions on its own?
 
 ---
 

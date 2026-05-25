@@ -96,8 +96,9 @@ cv-builder/                          (separate repo — cloned alongside this on
 - **AI Debug mode** — hypothesis-driven debugging using Vitest output
 - Test generation and TDD with agents (Vitest)
 - **Sub-agents** — parallel task delegation with isolated context windows
+- **Multitask Mode** — the agent as coordinator, delegating to background workers
 - **Git worktrees + Best-of-N** — multiple agents on multiple branches
-- **Cloud / Background agents** — long-running tasks that run without you
+- **Cloud / Background agents** — long-running tasks that run without you; development environments (Dockerfile-based config, multi-repo, governance)
 
 ### Presenter B — Context Intelligence, Spec-Kit & Advanced Workflows
 - The `@` context system (files, folders, docs, web, git)
@@ -108,6 +109,8 @@ cv-builder/                          (separate repo — cloned alongside this on
 - Prompt engineering patterns for code tasks
 - **Security & Privacy** — `.cursorignore`, agent trust model, MCP least-privilege; the WASM/LaTeX angle in this app (untrusted user input → escape coverage → compiled in-browser)
 - **MCP (Model Context Protocol)** — GitHub MCP for issue → PR loops; lean setup practices
+- **Cursor Automations** — recurring/event-driven agent workflows in the Agents Window (multi-repo, no-repo)
+- **Cursor in Jira** — assign tickets to Cursor or `@Cursor` in comments to trigger cloud agents
 - Team conventions, sharing Cursor config, **Bug Bot** for automated PR review, **managing PR size**
 
 ---

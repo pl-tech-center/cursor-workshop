@@ -252,7 +252,32 @@ This is the full loop — issue → reproduction → fix → test → PR — wit
 
 ---
 
-## 4.5 Security & Trust (5 min)
+## 4.5 Cursor Automations & Integrations (3 min)
+
+### Cursor Automations
+
+Automations let you define **recurring or event-driven agent workflows** — available directly in the Agents Window alongside your regular agents (not just on cursor.com).
+
+**What you can set up:**
+- **Multi-repo automations** — attach multiple repos so an automation reasons across all required context (e.g., "when a PR lands in the API repo, update the OpenAPI client in the frontend repo")
+- **No-repo automations** — automations that don't need a codebase at all: a daily Slack digest agent, a product analytics summariser, a changelog drafter
+
+Automations sit at **Layer 6** of the capability stack — they close the loop between "agent does a task when I ask" and "agent does a task on a schedule or trigger."
+
+### Cursor in Jira
+
+Cursor integrates directly with Jira. Two patterns:
+
+1. **Assign a ticket to Cursor** — set the assignee to Cursor and a cloud agent picks up the work, using the ticket title, description, and comments as context
+2. **`@Cursor` in a comment** — mention `@Cursor` in any Jira comment to kick off a cloud agent for a specific follow-up (e.g., "@Cursor implement the approach described above")
+
+The agent uses your repo settings to find the codebase, works in a branch, and opens a PR — the same workflow as a background agent, but triggered from your issue tracker instead of the IDE.
+
+> This pairs well with the GitHub MCP from §4.4: Jira triggers the agent, the agent uses GitHub MCP to open the PR, Bug Bot reviews it. The human reviews last.
+
+---
+
+## 4.6 Security & Trust (5 min)
 
 > **50% of attendees** flagged security as a concern. The fundamentals matter — and the CV Builder gives us very concrete examples since it runs untrusted text through a LaTeX compiler in the user's own browser.
 
@@ -321,7 +346,7 @@ The CV Builder takes arbitrary user text and feeds it into a LaTeX compiler. Thr
 
 ---
 
-## 4.6 Team Conventions & Sharing Cursor Config (3 min)
+## 4.7 Team Conventions & Sharing Cursor Config (3 min)
 
 ### What to commit
 ```
@@ -378,14 +403,16 @@ Layer 1 — Tab / Cmd+K / Chat       Individual edits and Q&A
 Layer 2 — @Context + Rules         High-quality, consistent single output
 Layer 3 — Skills                   Repeatable, team-wide workflows (speckit-* is the worked example)
 Layer 4 — Agent + Sub-agents       Autonomous multi-file feature work
+         + Multitask Mode          Agent as coordinator — delegates to background workers
 Layer 5 — Worktrees + Best-of-N    Parallel branches; same task across N models
-                                   + Background agents for hands-off execution
-Layer 6 — MCP + Spec-Kit           Integrated lifecycle from ticket to deploy
+         + Background agents       Hands-off execution with dev environments
+Layer 6 — MCP + Automations        Integrated lifecycle from ticket to deploy
+         + Spec-Kit + Jira         Event-driven workflows, issue-tracker integration
 ```
 
 Most engineers live at Layers 1–2. Today's goal is comfort at 3–5 and awareness of 6.
 
-### Top 7 things to do this week
+### Top 8 things to do this week
 
 1. Enable codebase indexing on your main project
 2. Add a `.cursor/rules/` with one always-on rule pointing at your current design doc (like `specify-rules.mdc`)
@@ -394,6 +421,7 @@ Most engineers live at Layers 1–2. Today's goal is comfort at 3–5 and awaren
 5. Use a worktree to run two independent features in parallel
 6. Set up GitHub or Jira MCP with a read-only, repo-scoped token
 7. Run a security review prompt on a PR before merging
+8. Explore Cursor Automations in the Agents Window — try a no-repo automation (e.g., daily standup digest)
 
 ### Resources
 
