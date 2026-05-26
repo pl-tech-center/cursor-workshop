@@ -104,33 +104,35 @@ these changes? What's still missing for FR-026 to hold end-to-end?
 
 ## 4.2 Skills — The CV Builder's Worked Example (10 min)
 
-Rules tell Cursor *how to behave*. **Skills** tell it *what workflows to run* — they are reusable, invocable prompt templates committed alongside your code. The CV Builder ships with 14 skills already installed, and this section uses them as the worked example.
+Rules tell Cursor *how to behave*. **Skills** tell it *what workflows to run* — reusable, version-controlled instruction packages (step-by-step workflows, conventions, optional scripts) you invoke with `/skill-name`. The CV Builder ships with 14 Spec-Kit (`speckit-*`) skills already installed, and this section uses them as the worked example.
 
 ### What's in `cv-builder/.cursor/skills/`
 
 ```
 .cursor/skills/
-├── speckit-constitution/SKILL.md      Define project principles & gates
-├── speckit-specify/SKILL.md           Generate spec.md + requirements checklist from a feature description
-├── speckit-clarify/SKILL.md           Resolve [NEEDS CLARIFICATION] markers via 3-max question batches
-├── speckit-plan/SKILL.md              Generate plan.md + research.md + data-model.md + contracts/
-├── speckit-tasks/SKILL.md             Decompose the plan into phased, parallel-tagged tasks
-├── speckit-implement/SKILL.md         Execute tasks in dependency order, ticking the checklist
-├── speckit-analyze/SKILL.md           Re-analyse an existing spec for gaps
-├── speckit-checklist/SKILL.md         Produce a quality checklist for any artifact
-├── speckit-taskstoissues/SKILL.md     Push tasks.md into GitHub issues for distributed work
-├── speckit-git-initialize/SKILL.md    Initialise the spec-kit git extension
-├── speckit-git-feature/SKILL.md       Create a feature branch before /speckit-specify
-├── speckit-git-commit/SKILL.md        Conventional commit per task
-├── speckit-git-validate/SKILL.md      Validate branch + commit shape against extension config
-└── speckit-git-remote/SKILL.md        Push to remote and open PR with the spec attached
+├── speckit-constitution/SKILL.md      Create or update project constitution; keep templates in sync
+├── speckit-specify/SKILL.md           Create spec.md (+ requirements checklist) from a feature description
+├── speckit-clarify/SKILL.md           Ask up to 5 targeted questions; encode answers back into spec.md
+├── speckit-plan/SKILL.md              Generate plan.md, research.md, data-model.md, contracts/
+├── speckit-tasks/SKILL.md             Generate dependency-ordered tasks.md with phased [P]arallel tags
+├── speckit-implement/SKILL.md         Execute tasks.md in order; mark [X]; one [T{id}] commit per task
+├── speckit-analyze/SKILL.md           Cross-check spec.md, plan.md, and tasks.md for consistency
+├── speckit-checklist/SKILL.md         Generate a requirements-quality checklist for the current feature
+├── speckit-taskstoissues/SKILL.md     Convert tasks.md into dependency-ordered GitHub issues
+├── speckit-git-initialize/SKILL.md    Initialize a Git repository with an initial commit
+├── speckit-git-feature/SKILL.md       Create a numbered feature branch (before_specify hook)
+├── speckit-git-commit/SKILL.md        Auto-commit after a Spec Kit command completes (hook)
+├── speckit-git-validate/SKILL.md      Validate current branch follows feature branch naming conventions
+└── speckit-git-remote/SKILL.md        Detect Git remote URL for GitHub integration
 ```
 
-Each skill is a `SKILL.md` file with frontmatter (`name`, `description`, `compatibility`, `metadata`) and a structured prompt body. Invoke them as slash commands: `/speckit-specify`, `/speckit-plan`, etc.
+Each skill is a folder containing `SKILL.md`. **Cursor requires** YAML frontmatter with at least `name` and `description`, plus a free-form Markdown body (step-by-step instructions; optional `scripts/`, `references/`, and `assets/` subfolders). Spec-Kit adds custom fields like `compatibility` and `metadata`. Invoke skills as slash commands: `/speckit-specify`, `/speckit-plan`, etc.
 
-### Anatomy of a skill — `speckit-specify`
+### Anatomy of a Spec-Kit skill — `speckit-specify`
 
-The skill has four sections:
+The four-section layout below is **Spec-Kit's template**, not a Cursor requirement. Other skills in this repo (`overview`, `speckit-git-commit`, …) use different shapes — copy the pattern when a workflow is multi-step, not because Cursor mandates it.
+
+`speckit-specify` has four sections:
 
 1. **User Input** — captures the user's description verbatim
 2. **Pre-Execution Checks** — reads `.specify/extensions.yml` for hooks (e.g., git-feature creates a branch before the spec)
@@ -148,8 +150,10 @@ Cmd+L → Agent tab →
 The section accepts a single free-text field (e.g., "English (native), Spanish (B2)") and
 appears in the PDF between Skills and Projects, omitted when empty.
 
-→ produces specs/002-languages-section/spec.md + checklists/requirements.md
-→ presents up to 3 clarification questions
+→ before_specify hook (`.specify/extensions.yml`): runs /speckit-git-feature first — new branch, then spec
+→ creates specs/{next-number}-{short-name}/ with spec.md + checklists/requirements.md
+   (e.g. specs/008-languages-section/ — next number after scanning existing specs/)
+→ may ask up to 3 clarifying questions for any [NEEDS CLARIFICATION] markers
 
 /speckit-plan
 → produces plan.md, research.md, data-model.md, contracts/
@@ -158,9 +162,11 @@ appears in the PDF between Skills and Projects, omitted when empty.
 → produces tasks.md decomposed by user story, with [P]arallel tags
 
 /speckit-implement
-→ executes tasks in dependency order, ticks the checklist as it goes
-→ runs npm test at the end
+→ executes tasks.md in order; marks each task [X]; one [T{id}] commit per task
+→ validates tests pass at the end (e.g. npm test on this project)
 ```
+
+The first visible step is often a **git branch**, not a spec file — `.specify/extensions.yml` wires a mandatory `before_specify` hook that runs `/speckit-git-feature` before `speckit-specify` creates anything under `specs/`.
 
 Walk through the diff with attendees — every file change traces back to a numbered task, which traces back to an FR in the spec.
 
@@ -173,14 +179,30 @@ Rules     → always-on style and constraint enforcement (.cursor/rules/specify-
 Skills    → invocable workflows for whole categories of work (.cursor/skills/speckit-*)
 ```
 
-> **Commands are being folded into skills.** Existing `.cursor/commands/*.md` still work but new repeatable workflows should be authored as skills. The CV Builder skips commands entirely.
-
 ### Tips for authoring your own skills
 
 - Start by capturing a workflow you re-type often. Paste your usual prompt into `SKILL.md`, add steps, commit.
 - Use `frontmatter.description` carefully — it determines when agent-requested skills auto-trigger.
-- Reference other skills with `EXECUTE_COMMAND: {command}` for chains (the spec-kit skills do this).
+- To chain skills, say plainly “run `/other-skill` before step 2” in your `SKILL.md` outline — no special syntax (example below). Spec-Kit goes further with `.specify/extensions.yml` hooks and `EXECUTE_COMMAND` — see below.
 - Test the skill end-to-end in a fresh chat before committing.
+
+#### Example: plain skill chaining (not installed)
+
+```
+---
+name: add-latex-section
+description: Add a new conditional LaTeX section to the CV Builder following existing patterns.
+---
+
+## Outline
+
+1. Run `/overview spec` so you know the spec → plan → tasks → code lineage and conventions.
+2. Read `@src/lib/latex-generator.ts::generateSkills` and `@specs/001-resume-builder/contracts/latex-generation.md`.
+3. Add `generate{Section}()` matching the empty-string contract; add vitest cases in `@tests/unit/latex-generator.test.ts`.
+4. Run `npm test` before finishing.
+```
+
+**`EXECUTE_COMMAND`** is a Spec-Kit convention inside `SKILL.md`, not a Cursor API. When a core skill hits Pre-Execution Checks, it reads `.specify/extensions.yml` for hooks (e.g. `before_specify`). For a **mandatory** hook it emits `EXECUTE_COMMAND: speckit.git.feature` — instructing the agent to run `/speckit-git-feature`, wait for it to finish, then resume the parent skill. Optional hooks prompt the user instead of auto-running.
 
 ---
 
