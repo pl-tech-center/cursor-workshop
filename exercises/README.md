@@ -257,15 +257,19 @@ Sub-agents work in parallel only when their file scopes **don't overlap**. If mu
 
 ### 4b. Worktree parallel work
 
-1. From the `cv-builder` repo:
-    ```bash
-    git worktree add ../cv-builder-compact-mode feature/compact-mode
-    cursor ../cv-builder-compact-mode
-    ```
+1. From the `cv-builder` repo (creates branch `feature/compact-mode` — it does not exist yet):
+   ```bash
+   git worktree add -b feature/compact-mode ../cv-builder-compact-mode
+   cursor ../cv-builder-compact-mode
+   ```
 2. In the new window: Agent task → `"Add a 'Compact mode' toggle (Switch) to @src/components/ReviewView.tsx. When on, regenerate the LaTeX with tighter margins by adjusting the geometry package in @src/lib/latex-preamble.ts (e.g., 0.5in margins instead of the current 0.75in). Pass a mode argument through generateLatex."`
 3. In the original window: continue with Agent task → `"Add a per-entry 'visible' boolean (default true) to ExperienceEntry. When false, the entry is rendered in the form (so it can be re-enabled) but skipped by generateExperience. Add tests."`
 4. Both run without conflicting
-5. Clean up: `git worktree remove ../cv-builder-compact-mode`
+5. Clean up:
+   ```bash
+   git worktree remove ../cv-builder-compact-mode
+   git branch -d feature/compact-mode   # optional — delete branch if you won't keep it
+   ```
 
 ### 4c. Best-of-N — same task, three models
 
