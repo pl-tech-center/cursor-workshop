@@ -8,7 +8,7 @@ Hands-on exercises to reinforce each section. Each exercise is 5–10 minutes. D
 > ```bash
 > cd ../cv-builder
 > npm install
-> npm run download:tex-assets   # one-time, ~150 MB of TeX Live WASM
+> npm run download:tex-assets   # one-time, ~680 MB of TeX Live WASM
 > npm test                      # should be all green before you begin
 > npm run dev                   # http://localhost:5173
 > ```
@@ -42,28 +42,60 @@ Hands-on exercises to reinforce each section. Each exercise is 5–10 minutes. D
 ---
 
 ## Exercise 2 — Context & `@` Symbols
-*After Part 2 · ~10 min*
+*After Part 2 · ~15 min*
 
-### 2a. Implicit codebase search
+Reinforces [Part 2 — Context & Codebase Intelligence](../02-context-and-codebase.md): indexing (§2.2), the `@` system (§2.3), and `.cursor/rules` (§2.4).
+
+### 2a. Implicit codebase search (§2.2–2.3)
 1. `Cmd+L` → `"How does the app turn form data into a PDF? Walk me through the pipeline."`
-   (No `@Codebase` needed — the agent searches the codebase index automatically.)
+   (No `@Codebase` symbol — the agent searches the codebase index automatically.)
 2. Note which files Cursor cites. Open them — is the pipeline correct? (Expected: `App.tsx` → `ReviewView.tsx` → `latex-generator.ts` → `pdf-compiler.ts` → `<iframe>`)
+3. If the agent misses `pdf-compiler.ts`, escalate per Part 2 troubleshooting: attach `@src/lib/pdf-compiler.ts` or ask `"search the codebase for browser-side LaTeX compilation"`.
 
-### 2b. Cross-file consistency with `@Files`
-1. `Cmd+L` → `"Look at @src/lib/latex-generator.ts and @src/lib/types.ts. For every entity in types.ts, is there a corresponding generator function? Is every field used? Anything orphaned?"`
-2. If Cursor finds a gap, fix it with a follow-up prompt.
+### 2b. Indexing & ignore files (§2.2)
+1. `Cursor Settings` → `Indexing & Docs` — confirm indexing is complete; note the file count.
+2. Open `.gitignore` → find `public/core/busytex/` (~680 MB of WASM). Why is it excluded from the index even though cv-builder has no `.cursorignore`?
+3. In one sentence, explain the difference between `.gitignore` and `.cursorignore` (from §2.2).
 
-### 2c. `@Docs` research
-1. `Cmd+L` → `"@Docs Vitest — what's the recommended way to assert on multi-line strings with stable indentation? Show me how to apply that to the assertions in @tests/unit/latex-generator.test.ts on generateExperience."`
-2. Compare to the official docs. Optionally apply one improvement.
+### 2c. Explicit `@Files` — pin the contract (§2.3)
+Part 2’s `@Files` pattern: attach the exact files you need — cheaper and more deterministic than implicit search (contrast with **2a**).
 
-### 2d. Explore the `.cursor/rules` files
-The CV Builder ships exactly one rule: `.cursor/rules/specify-rules.mdc`. It's `alwaysApply: true` and points the agent at the current plan.
+1. `Cmd+L` → `"In @src/lib/latex-generator.ts — using generateSummary() as the reference, which section generators return '' when their section is empty? Which one behaves differently?"`
+   (Expected: `generateExperience`, `generateEducation`, `generateSkills`, `generateProjects`, and `generateCertifications` follow the pattern; **`generateContact` always emits a contact block** — even when optional fields are blank.)
+2. Follow up with the spec attached: `"@specs/001-resume-builder/contracts/latex-generation.md @src/lib/latex-generator.ts — does the contract explain why generateContact is the exception? Quote the relevant line."`
+   (Expected: the contract’s document structure lists the contact block as **always present**; optional sections omit output when empty.)
+3. **Do not change any code** — this step is read-only. You’ll implement a new generator in **2e**.
 
-1. Read the rule, then read `specs/001-resume-builder/plan.md`
-2. Open a new Chat → ask Cursor: `"Add a generateLanguages() function for a Languages section."` — without referencing the plan
-3. Watch the agent read `plan.md` automatically (look at the citations). Does its proposed code respect Constitution VI (files < 200 lines), the section ordering, the conditional-empty-string contract?
-4. **Bonus:** add a second rule, `.cursor/rules/testing.mdc`, with `globs: ["tests/**/*.test.ts"]` enforcing "describe per function, it() names start with a verb describing behaviour, top-of-file fixtures only". Re-run the same prompt asking it to also add tests — note the difference.
+### 2d. `@Docs` lookup (§2.3)
+1. `Cmd+L` → `"@Docs Vitest — how do I run tests in watch mode for a single file?"`
+2. Run the command it suggests (expected: `npm run test:watch -- latex-generator` or `npx vitest tests/unit/latex-generator.test.ts`). Leave watch running for **2e**.
+
+
+### 2e. TDD, `@Terminals`, and git context (§2.3)
+1. `git checkout -b workshop/context-demo`
+2. `Cmd+L` → `"@tests/unit/latex-generator.test.ts @src/lib/latex-generator.ts — add describe('generateLanguages') mirroring generateSkills. Use toContain assertions. Do NOT implement generateLanguages yet."`
+3. Watch the terminal — tests should fail (missing export / failing assertions).
+4. `Cmd+L` → `"@src/lib/latex-generator.ts — add generateLanguages(languages: string): string. Match the conditional contract of generateSkills. Do NOT wire it into generateLatex yet."`
+5. Confirm watch reruns and `generateLanguages` tests pass.
+6. Introduce a typo in one test expectation → select the failure in the terminal → `Cmd+L` (or `@Terminals`): `"Fix the test expectation, not the implementation."`
+7. `@Commit (Diff of Working State)` → `"Review these changes. Does generateLanguages match generateSkills? Write a commit message."` → commit.
+8. **Optional:** `@Branch (Diff with Main)` → `"Summarise this branch for a PR description."`
+
+### 2f. Explore `.cursor/rules` (§2.4)
+The CV Builder ships **two** rules in `.cursor/rules/`:
+
+| File | Role |
+|---|---|
+| `specify-rules.mdc` | Always-on pointer to `specs/001-resume-builder/plan.md` — focus here |
+| `speckit-commit-workflow.mdc` | Spec Kit commit format during `/speckit-implement` — covered in Part 4 |
+
+1. Read `specify-rules.mdc`, then skim `plan.md`.
+2. Open a **new** Chat (fresh context) → `"Add a generateReferences(references: string) function for a References section — single free-text field, same conditional-empty pattern as generateSkills."` — without `@`-mentioning or referencing the plan.
+   Review the agent’s response and file reads. Confirm it consulted `plan.md` without you `@`-mentioning it. Reject any code changes — this step is read-only.
+3. Does the proposed approach respect Constitution VI (files < 200 lines), pure functions in `src/lib/`, and Constitution IV (unit tests for generators, no UI tests)?
+4. **Bonus:** add a glob-scoped **third** rule, `.cursor/rules/testing.mdc`, with `globs: ["tests/**/*.test.ts"]` enforcing "describe per function, `it()` names start with a verb describing behaviour, top-of-file fixtures only". Re-run step 2 asking it to also sketch tests — note the difference.
+
+> **Next up:** Exercise 3a wires Languages into the full app (form tab, `generateLatex`, PDF preview) — building on the unwired `generateLanguages` from **2e**.
 
 ---
 

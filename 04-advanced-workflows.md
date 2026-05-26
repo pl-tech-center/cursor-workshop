@@ -364,7 +364,7 @@ Bug Bot is Cursor's automated code reviewer. When enabled on a repo:
 ```
 node_modules/
 dist/
-public/core/busytex/       # 150 MB of WASM assets — keep out of the index
+public/core/busytex/       # ~680 MB of WASM assets — keep out of the index
 *.pdf
 .env
 .env.*

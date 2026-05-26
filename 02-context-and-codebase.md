@@ -31,7 +31,7 @@ Cursor indexes your codebase to enable semantic search. Since `@Codebase` no lon
 > **Important:** If the index is incomplete or stale, the agent will miss relevant code. Always let indexing finish before starting a complex agent session — especially on a fresh clone.
 
 ### What gets indexed
-- All text files tracked by git (source code, markdown, config files)
+- All text files in the workspace that aren't excluded (source code, markdown, config files — tracked or untracked)
 - Respects `.gitignore` and `.cursorignore`
 - Binary files, images, and compiled output are excluded automatically
 
@@ -46,14 +46,16 @@ Cursor indexes your codebase to enable semantic search. Since `@Codebase` no lon
 
 ### `.cursorignore`
 
-Excludes files from both the index **and** from being read by the agent. Use it for large generated assets, secrets, and noise.
+Excludes files from both the index **and** from being read by the agent. Use it for build artifacts, large bundled assets, secrets, and noise.
+
+> **`.gitignore` vs `.cursorignore`:** Cursor respects `.gitignore` for indexing — so paths already gitignored stay out of the index without a `.cursorignore`. Add `.cursorignore` when you also want to block Agent from *reading* paths (e.g. secrets that might be tracked, or noise you still keep on disk).
 
 ```
-# Example .cursorignore
+# Example .cursorignore (recommended; not committed in cv-builder)
 node_modules/
 dist/
 .vite/
-public/core/busytex/       # ~150 MB of WASM assets — keep out of the index
+public/core/busytex/       # ~680 MB of WASM assets — keep out of the index
 *.pdf
 .env
 .env.*
@@ -61,30 +63,45 @@ public/core/busytex/       # ~150 MB of WASM assets — keep out of the index
 secrets/
 ```
 
+In cv-builder, `public/core/busytex/` is excluded via `.gitignore` instead — see demo step 3 below.
+
 ### Large repo strategies
-- **Monorepos:** Open only the relevant sub-project as a workspace root — the index scopes to the workspace
-- **Multi-root workspaces:** Each root is indexed independently; the agent searches within the focused root
-- **Generated code:** Add generated directories to `.cursorignore` — they add noise without semantic value
+- **Monorepos:** Only open workspace folders get indexed. Either open just the package(s) you need, or open the monorepo root and use `.cursorignore` to exclude packages you aren't working on
+- **Multi-root workspaces:** Each root is indexed independently, but Agent can search **all** open roots — not just the folder of the active file. Use `@Folders` or `.cursorignore` when cross-package noise is a problem
+- **Build & package-generated output** (not AI-written code): Exclude artifacts produced by your toolchain — e.g. `dist/` / `.next/` (JS/TS), `__pycache__/` / `*.egg-info/` / `*_pb2.py` (Python), Maven `target/` / Gradle `build/` (Java), `*.pb.go` / `mock_*.go` (Go). They add noise and slow indexing without helping semantic search. Use `.cursorignore` to exclude from both the index and agent access, or `.cursorindexingignore` when you still want the agent to read those files on demand but keep them out of search results
 
 ### When the agent doesn't find what you expect
 
 If the agent misses relevant code during a session:
-1. Check that indexing is complete (settings panel)
+1. Check that indexing is complete (`Cursor Settings` → `Indexing & Docs`)
 2. Use explicit `@<filename>` or `@<folder>/` references to point it in the right direction
 3. Ask directly: "search the codebase for how X works" — this prompts the agent to search more aggressively
 4. For cross-cutting concerns, mention multiple related files with `@`
 
 ### Demo (using the CV Builder app)
 ```
-1. Show Codebase Indexing status in Settings — note file count
+1. Show Codebase Indexing status in Cursor Settings → Indexing & Docs — note file count
 2. Cmd+L → "How does the app turn form data into a PDF?"
-   → Agent searches the index autonomously and surfaces the pipeline:
-      ResumeData → generateLatex() in src/lib/latex-generator.ts
+   → Agent searches the index autonomously. It may mention App.tsx and the form tabs
+     (where ResumeData state is held and edited) — that's expected.
+   → The PDF pipeline itself starts in ReviewView when the user opens the Review tab:
+      ResumeData (from App.tsx) → ReviewView.tsx
+                 → generateLatex() in src/lib/latex-generator.ts
                  → compilePdf() in src/lib/pdf-compiler.ts (texlyre-busytex Worker)
-                 → Blob URL → <iframe> in src/components/ReviewView.tsx
-3. Show .cursorignore — note that public/core/busytex/ (150 MB of WASM) is excluded
-4. Ask: "What WASM functions does pdf-compiler.ts call?"
-   → Agent finds the right file even without @Files, because the index has good embeddings for it
+                 → Blob URL → <iframe> in ReviewView.tsx
+3. Open .gitignore → point at public/core/busytex/
+   → Cursor respects .gitignore for indexing, so ~680 MB of WASM stays out even
+     without a .cursorignore. Contrast with the example block above: .cursorignore
+     goes further — it also blocks Agent from reading those paths.
+4. Cmd+L → "How does the app compile LaTeX in the browser?"
+   → No @Files — the prompt names no file, so this exercises codebase search.
+   → Good answer: surfaces src/lib/pdf-compiler.ts and the texlyre-busytex JS API —
+      BusyTexRunner (Worker via initialize(true)) → PdfLatex.compile() → PDF bytes
+      → Blob URL. It should not invent low-level WASM/Emscripten APIs — those live
+      inside the gitignored assets under public/core/busytex/; the app only calls
+      BusyTexRunner and PdfLatex from the npm package.
+   → If the agent misses pdf-compiler.ts, use the troubleshooting steps above: @Files or
+     "search the codebase for browser-side LaTeX compilation".
 ```
 
 ---
@@ -97,8 +114,11 @@ The `@` symbol is the primary way to **explicitly pull context** into chat or Ag
 Reference specific files or entire directories. This is your **most-used** context tool — the explicit, precise alternative to hoping the agent finds what it needs.
 
 ```
-"Refactor @src/lib/latex-generator.ts so that every section generator follows the same conditional-empty-string contract used by generateSummary"
+"Refactor @src/lib/latex-generator.ts — every section generator should follow
+generateSummary()'s contract: return '' when the section has no content"
 ```
+
+To pin a specific function, select it in the editor and press **Cmd+L** (Add to Chat), or attach the file with `@` and name the function in the prompt as above.
 
 ```
 "Look at @src/components/ — are all form components following the same controlled-input pattern?"
@@ -128,20 +148,20 @@ Best for: cross-cutting concerns, finding existing patterns, understanding unfam
 Reference indexed documentation for any library without copy-pasting. This is how you get framework-specific guidance that's more accurate than the model's training data.
 
 ```
-"@Docs Vitest — how do I run a single test file with the @web reporter for nicer diffs?"
+"@Docs Vitest — how do I run a single test file from the command line?"
 "@Docs shadcn/ui Tabs — what props do I need to control the active tab from parent state?"
 ```
 
 **Setup:**
 - Cursor ships with pre-indexed docs for popular libraries (React, TypeScript, Vitest, Tailwind, etc.)
 - Add custom documentation sources: `@Docs` → `Add new doc` → paste a URL
-- Frequently used libraries: add them in `Cursor Settings` → `Features` → `Docs` so they're always available
+- Frequently used libraries: add them in `Cursor Settings` → `Indexing & Docs` so they're always available
 
 **When to use @Docs vs. web search:**
 - `@Docs` — stable API references, established libraries with indexed documentation
 - Natural language ("check the latest docs for X") — bleeding-edge libraries, recent changelogs, community discussions
 
-**Gotcha:** If `@Docs` returns outdated information, re-index the source in Settings or re-add the URL.
+**Gotcha:** If `@Docs` returns outdated information, re-index the source in `Cursor Settings` → `Indexing & Docs` or re-add the URL.
 
 ### Web search (implicit — no `@Web` symbol)
 
@@ -174,16 +194,20 @@ These are particularly useful for:
 - Generating PR descriptions from the full branch diff
 - Understanding what changed since branching
 
+**Workshop caveats:**
+- `@Branch (Diff with Main)` compares your current branch to the repo's detected default branch (usually `origin/HEAD`, else `main` → `master` → `develop`). The symbol always says "Main" in the UI; you can't choose a custom base like `development`
+- In multi-root workspaces, git context can be tied to the first root (known Cursor limitation)
+
 ### `@Terminals`
 Pull in the output of your terminal(s). Essential for the "run → fail → fix" loop.
+
+You can attach the whole terminal with `@Terminals`, or **select specific lines** in the integrated terminal and press **Cmd+L** (Add to Chat) to send only the relevant output — useful when the full buffer is too noisy.
 
 ```
 # Run failing test, then:
 "@Terminals — why is this vitest test failing?"
 "@Terminals — the build failed. What's wrong?"
 ```
-
-The agent reads the last N lines of stdout/stderr from your integrated terminal. No need to copy-paste error output.
 
 ### `@Past Chats`
 Reference context from a previous conversation. Useful when building on earlier work without re-explaining.
@@ -223,35 +247,46 @@ Fix the margin in the component that renders section headers."
 
 ### Demo sequence (using the CV Builder app)
 ```
+0. Setup:
+   git checkout -b workshop/context-demo
+
 1. Implicit codebase search:
-   "How does generateLatex assemble sections in the correct order? Where is the order defined?"
-   → Agent searches the index automatically — no @Codebase needed
+   "How does generateLatex decide which sections appear in the PDF, and in what order?"
+   → Agent searches automatically — no @ symbol needed
 
-2. Explicit file reference:
-   "@src/lib/latex-generator.ts — add a generator for a Languages section (free-text input,
-   conditional). Match the contract used by generateSkills."
+2. Documentation lookup:
+   "@Docs Vitest — how do I run tests in watch mode for a single file?"
+   → Note the command; run it in a terminal and leave it open
 
-3. Documentation lookup:
-   "@Docs Vitest — show me the recommended pattern for testing a function that returns
-   a multi-line string with deterministic indentation."
+3. Explicit file reference (test-first):
+   "@tests/unit/latex-generator.test.ts @src/lib/latex-generator.ts —
+   add describe('generateLanguages') mirroring generateSkills. Use toContain assertions."
+   → Watch terminal: 2 failures (missing export / failing assertions) until step 4
 
-4. Git context:
-   "@Commit (Diff of Working State) — review these changes. Does the new generator match
-   the existing pattern? Write a commit message."
+4. Explicit file reference:
+   "@src/lib/latex-generator.ts — add generateLanguages(languages: string): string.
+   Match the conditional contract of generateSkills. Do NOT wire it into generateLatex yet."
+   → Watch terminal reruns on save; all generateLanguages tests pass
 
 5. Terminal feedback loop:
-   Run `npm test` in the terminal →
-   "@Terminals — two assertions are failing. Fix the expected output in the test file."
+   With watch still running: introduce a typo in one test expectation →
+   select the failure in the terminal → Cmd+L (or @Terminals):
+   "Fix the test expectation, not the implementation."
+   → Watch reruns; all tests green again
 
-6. Branch summary:
-   "@Branch (Diff with Main) — summarise everything we did in this session for a PR description."
+6. Git context:
+   "@Commit (Diff of Working State) — review these changes. Does generateLanguages match
+   generateSkills? Write a commit message." → commit
+
+7. Branch summary:
+   "@Branch (Diff with Main) — summarise this branch for a PR description."
 ```
 
 ---
 
 ## 2.4 `.cursor/rules` — Project-Level Instructions (15 min)
 
-Rules let you encode your team's conventions so Cursor follows them automatically — every session, for everyone on the team. This is the **#3 most-requested topic** from the poll (54%).
+**Project rules** live in `.cursor/rules/` as version-controlled Markdown files. They give Agent (Chat) persistent instructions — conventions, architecture decisions, workflow templates — without you re-pasting them every time. When a rule applies, its contents are included at the start of the model context; *which* rules apply depends on how you configure them (always-on, file-scoped, agent-selected, or manual `@`-mention). Commit rules to git and everyone on the team gets the same guidance. Rules affect **Agent (Chat) only** — not Cursor Tab or Inline Edit (Cmd/Ctrl+K).
 
 ### File location
 ```
@@ -261,23 +296,25 @@ your-project/
         ├── general.mdc        ← always-on rules
         ├── typescript.mdc     ← applied to .ts/.tsx files
         ├── react.mdc          ← applied to React components
-        └── testing.mdc        ← applied to test files
+        ├── testing.mdc        ← applied to test files
+        └── frontend/
+            └── components.md  ← rules can live in subfolders
 ```
 
-Rules files use `.mdc` format (Markdown with optional frontmatter).
+Rules files use Markdown. Cursor supports both `.md` and `.mdc` extensions — plain `.md` works for simple rules; use `.mdc` with YAML frontmatter when you need `description`, `globs`, or `alwaysApply`. The `globs` field accepts a **string or array** — e.g. `globs: docs/**/*.md, docs/**/*.mdx` or `globs: ["**/*.ts", "**/*.tsx"]`.
 
 ### Rule types
 
 | Type | Description | When applied |
 |---|---|---|
-| **Always** | Applied to every request | `alwaysApply: true` in frontmatter |
-| **Auto-attached** | Applied based on file globs | `globs: ["**/*.ts", "**/*.tsx"]` |
-| **Agent-requested** | AI decides when to use | Add description in frontmatter |
-| **Manual** | Only when you `@` them | Good for one-off templates |
+| **Always Apply** | Applied to every Agent chat session | `alwaysApply: true` in frontmatter |
+| **Apply to Specific Files** | Applied when matching files are in context | `globs: ["**/*.ts", "**/*.tsx"]` |
+| **Apply Intelligently** | Agent decides when to use based on `description` | `description: "…"` in frontmatter |
+| **Apply Manually** | Only when you `@`-mention the rule | Good for one-off templates |
 
-### The CV Builder's actual rule — `specify-rules.mdc`
+### The CV Builder's main rule pattern — `specify-rules.mdc`
 
-The CV Builder ships with exactly one rule, and it's a great pattern worth copying:
+The CV Builder's main pattern is `specify-rules.mdc` — a short always-on rule that points at the active plan. (There's also `speckit-commit-workflow.mdc` for Spec Kit commits.) It's a great pattern worth copying:
 
 ```markdown
 ---
@@ -291,7 +328,9 @@ at specs/001-resume-builder/plan.md
 <!-- SPECKIT END -->
 ```
 
-This is a 4-line, always-on rule that points the agent at the **active spec plan**. The plan is the source of truth for stack decisions (R-001 R-005), constitution gates, and file layout — so every chat in the project sees that context without any `@` reference.
+This is a short, always-on rule with a 3-line instruction body that tells every Agent session to read `specs/001-resume-builder/plan.md` — you don't need to `@`-mention the plan yourself. What's injected is the **pointer instruction**, not the plan contents themselves (the agent usually reads the file when relevant). The plan is the source of truth for stack decisions in `research.md` (e.g. **R-001**: client-side PDF compilation via `texlyre-busytex`; **R-005**: which shadcn/ui components to scaffold), constitution gates, and file layout.
+
+**Pointer vs `@file` in rules:** Prose like "read `plan.md`" injects only the instruction — the agent reads the file when needed (cheap for large docs). Writing `@specs/001-resume-builder/plan.md` in the rule body embeds that file's contents whenever the rule applies (guaranteed, but costly for always-on rules). Use `@filename` for small templates; use prose pointers for large living documents.
 
 Per-project rules don't have to be long. One always-on pointer + a couple of glob-scoped rules is usually enough.
 
@@ -301,6 +340,7 @@ Per-project rules don't have to be long. One always-on pointer + a couple of glo
 ```markdown
 ---
 globs: ["**/*.ts", "**/*.tsx"]
+alwaysApply: false
 ---
 
 - Use explicit interfaces in src/lib/types.ts — no inline anonymous shapes for entities.
@@ -314,6 +354,7 @@ globs: ["**/*.ts", "**/*.tsx"]
 ```markdown
 ---
 globs: ["src/components/**/*.tsx"]
+alwaysApply: false
 ---
 
 - All inputs must be controlled (value + onChange) — never uncontrolled.
@@ -326,6 +367,7 @@ globs: ["src/components/**/*.tsx"]
 ```markdown
 ---
 globs: ["tests/**/*.test.ts"]
+alwaysApply: false
 ---
 
 - Use vitest. Test names must describe behaviour: `it('renders Present when isCurrent is true', ...)`.
@@ -335,31 +377,41 @@ globs: ["tests/**/*.test.ts"]
 
 ### Demo (using the CV Builder app)
 ```
-1. Show .cursor/rules/specify-rules.mdc — 4 lines, alwaysApply: true, points at the plan
-2. Cmd+L → "Add a generator for a Languages section" — note that Cursor reads plan.md before suggesting code (it knows about Constitution VI, the section ordering rule, the file layout)
-3. Open a fresh project without rules → same prompt → suggestions wander away from the project's conventions
-4. Show that rules are committed to git → new team members get them automatically (and the spec-kit skills too)
+1. Show `.cursor/rules/specify-rules.mdc` — short file with a 3-line instruction body, `alwaysApply: true`, pointer to the plan
+2. Cmd+L → "Add a generator for a Languages section" — note the rule instructs the agent to read `plan.md` (it typically picks up Constitution VI, section ordering, and file layout without you `@`-mentioning the plan)
+3. Show that rules are committed to git → new team members get them automatically (and the spec-kit skills too)
 ```
 
 ### Context window impact
 
-Rules consume context on every request. This is the trade-off: more rules = more consistent output, but also less room for actual code context.
+When applied, rule contents are included at the start of the model context — but **when** they apply depends on the rule type:
+
+- **Always Apply** (`alwaysApply: true`) → every Agent chat session
+- **Apply to Specific Files** (`globs`) → only when matching files are in context
+- **Apply Intelligently** (`description`) → when Agent judges them relevant
+- **Apply Manually** → only when you `@`-mention the rule
+
+Only always-on rules pay the context cost on every session. This is the trade-off: more always-applied rules = more consistent output, but also less room for actual code context.
+
+**Note:** Project rules apply to **Agent (Chat) only** — not Cursor Tab or Inline Edit (Cmd/Ctrl+K).
+
+Relative context costs below are workshop heuristics — Cursor docs confirm rules are injected into context but don't publish official token counts.
 
 | Approach | Context cost | When to use |
 |---|---|---|
-| One `alwaysApply` pointer rule (like `specify-rules.mdc`) | Minimal (~50 tokens) | Always — points the agent at the plan |
-| 3-4 glob-scoped rules | Low (~200 tokens each, only when relevant files are touched) | Style enforcement per file type |
-| One massive `general.mdc` with 40 rules | High (~2000+ tokens on every request) | Avoid — split into scoped rules instead |
+| One short `alwaysApply` pointer rule (like `specify-rules.mdc`) | **Minimal** | Always Apply — points the agent at the plan |
+| 3–4 glob-scoped rules | **Low, per matching file** | Style enforcement per file type |
+| One massive always-on `general.mdc` with 40 rules | **High, every session** | Avoid — split into scoped rules instead |
 
-**Rule of thumb:** If your rules total exceeds ~1000 tokens on a given request, you're eating into the context the agent needs for the actual code. Prefer targeted glob-scoped rules over one huge always-on file.
+**Rule of thumb:** If your always-applied rules feel like a full page of text, you're probably eating into the context the agent needs for actual code. Prefer prose pointers (`read plan.md`) or glob-scoped rules over one huge always-on file; reserve `@filename` in rule bodies for small templates that must load whenever the rule applies.
 
 ### Tips
 - Start simple — add rules when you notice Cursor generating code that doesn't match your style
-- Rules over ~500 lines get ignored; keep them focused
+- Keep each rule under 500 lines (official best practice). Very long rules waste context and are harder for the model to follow consistently.
 - Each rule should be a specific, testable instruction — not vague guidance
 - **Rules are living documentation** — treat them like code (PRs, review, iteration)
 - When Cursor ignores a rule, it's usually too long or contradicts another rule — simplify
-- Glob rules only fire when matching files are in context — cheap and precise
+- Glob rules only fire when matching files are in context — cheap and precise; set `alwaysApply: false` explicitly on file-scoped rules
 
 ---
 
@@ -373,7 +425,7 @@ Rules consume context on every request. This is the trade-off: more rules = more
 
 ### Common mistakes
 - Asking vague questions without `@` references
-- Not setting up `.cursorignore` → slow indexing on huge repos
+- Not excluding build assets (`.gitignore` and/or `.cursorignore`) → slow indexing on huge repos
 - Forgetting to commit `.cursor/rules` → team doesn't benefit
 - Writing rules that are too vague ("write good code") — be specific and concrete
 
