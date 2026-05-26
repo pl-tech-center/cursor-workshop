@@ -429,6 +429,10 @@ Relative context costs below are workshop heuristics — Cursor docs confirm rul
 - Forgetting to commit `.cursor/rules` → team doesn't benefit
 - Writing rules that are too vague ("write good code") — be specific and concrete
 
+### Hands-on
+
+→ [Exercise 2 — Context & `@` Symbols](./exercises/README.md#exercise-2--context---symbols) *(after this part, ~10 min)*
+
 ---
 
 *Next: [Part 3 — Agentic Coding & Agent Mode →](./03-agentic-coding.md)*

@@ -382,7 +382,7 @@ Cmd+L → Agent tab →
 
 Split the work into parallel workstreams:
 1. Sub-task A: Add LanguagesForm.tsx + generateLanguages() — Languages is a single free-text
-   field, mirror @src/components/SkillsForm.tsx and @src/lib/latex-generator.ts::generateSkills
+   field, mirror @src/components/SkillsForm.tsx and generateSkills in @src/lib/latex-generator.ts
 2. Sub-task B: Add AwardsForm.tsx + generateAwards() — Awards is a repeatable list with name,
    issuer, date; mirror @src/components/CertificationsForm.tsx and generateCertifications
 3. Sub-task C: Add vitest cases for both generators in @tests/unit/latex-generator.test.ts
@@ -745,6 +745,11 @@ This solves the "works on my machine" problem for background agents — they run
 
 ### Safety note
 > `git worktree` leaves extra directories on disk. Clean up with `git worktree remove <path>` when done.
+
+### Hands-on
+
+→ [Exercise 3 — Agent Mode & Output Quality](./exercises/README.md#exercise-3--agent-mode--output-quality) *(after this part, ~15 min)*
+→ [Exercise 4 — Sub-agents & Parallelism](./exercises/README.md#exercise-4--sub-agents--parallelism) *(after this part, ~15 min)*
 
 ---
 
