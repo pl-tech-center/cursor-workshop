@@ -40,6 +40,11 @@ Cursor doesn't just complete what you're typing — it watches your edits and pr
 - The suggestion is plausible but subtly wrong — always read it
 - For anything architecturally significant — use Agent mode instead
 
+### Pro tips
+- Tab predictions improve dramatically when you have related files open in other tabs — open the test file alongside the implementation for best results
+- If autocomplete is consistently wrong, check your codebase index status — a stale or incomplete index degrades prediction quality
+- For multi-cursor edits, Cursor predicts the next-edit per cursor position — combine multi-cursor with Tab for batch renaming without regex
+
 ### Live demo (using the CV Builder app)
 ```
 1. Open src/lib/types.ts → add a new field `employmentType: 'full-time' | 'part-time' | 'contract' | 'freelance' | 'internship'` to the ExperienceEntry interface
@@ -95,6 +100,11 @@ Cmd+K in terminal →
 | Accept change | `Cmd+Enter` |
 | Reject change | `Escape` |
 | Follow-up prompt | Just keep typing in the same bar |
+
+### Pro tips
+- Chain `Cmd+K` with undo (`Cmd+Z`) as a rapid exploration tool: prompt → review → undo → re-prompt with refined constraints
+- Select nothing and press `Cmd+K` to generate new code at the cursor position — useful for inserting a new function between existing ones
+- In the terminal, `Cmd+K` has access to your shell history — it can reference previous commands in its suggestions
 
 ### Demo (using the CV Builder app)
 ```
@@ -225,6 +235,11 @@ Multiple independent tasks?        → Multitask mode
 Do you need to understand first?   → Ask mode, then switch to Agent
 Is it large/risky?                 → Plan mode → review → execute
 ```
+
+### Pro tips
+- You can switch models mid-conversation — start exploration with a fast model, then switch to a reasoning model for the implementation step with `Cmd+/`
+- Agent mode queues follow-up messages: submit your next instruction while the agent is busy and it runs automatically when the current task finishes. Drag to reorder queued messages.
+- Built-in sub-agents (Explore, Bash, Browser) select their model automatically — they use faster models by default for cost efficiency. Custom sub-agents inherit the parent's model unless you override with the `model` field.
 
 ### Demo (using the CV Builder app)
 ```

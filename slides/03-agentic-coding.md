@@ -23,11 +23,22 @@ style: |
 # Part 3
 ## Agentic Coding & Agent Mode
 
-**#1 requested topic — 71%**
+---
+
+# 3.1. What Is a Coding Agent?
+
+**Reason-and-act loop:**
+Break goal into sub-tasks → use tools → observe result → iterate
+
+**Self-correction loop:**
+Write code → run tests → observe failure → rewrite → pass
+
+> "Vibe coding" is the experience.
+> **Agentic coding** is the engine.
 
 ---
 
-# 3.1 — The Shift
+# 3.1. The Shift
 
 | | You do | AI does |
 |-|--------|---------|
@@ -37,27 +48,73 @@ style: |
 
 ---
 
-# 3.2 — The Escalation
+# 3.2. The Escalation
+
+`Cmd+L` `Shift+Tab` to cycle modes
 
 ```
-Ask   → understand
+Ask   → understand (read-only)
 Plan  → review steps before acting
 Agent → full autonomous execution
+Multitask → parallel agent sessions
 ```
 
 ---
 
-# 3.2 — Demo: Scaffold via Spec-Kit
+# 3.2. Why Plan Mode Matters
+
+- Catch architectural mistakes **before** any edits
+- Agree on scope with a colleague or reviewer
+- Record of intent → useful for PR descriptions
+
+> Use Plan whenever a wrong first step would be expensive to undo.
+
+---
+
+# 3.2. Demo: Scaffold via Spec-Kit
 
 ```
 /speckit-specify → /speckit-plan → /speckit-tasks → implement → npm test
 ```
 
+Review: `Cmd+Enter` accept all `Esc` reject per-file checkmarks
+
 ---
 
-# 3.3 — AI Output Quality
+# 3.2. Agent Prompt Tips
 
-**Constrain → Self-critique → Test**
+- Be specific about **file paths** when you know them
+- Describe **desired behaviour**, not implementation details
+- Say "match existing patterns in the codebase"
+- Break very large features into **multiple Agent sessions**
+
+---
+
+# 3.3. Verify Before Trusting
+
+**Never accept agent output without validation.**
+
+| Root cause | Your lever |
+|---|---|
+| Missing context | `@Files` / `@Folders` ask agent to search |
+| Wrong style | `.cursor/rules` (Part 2) |
+| Stale conversation | New chat thread |
+| Task too broad | Smaller, scoped sessions |
+| Model limits | Stronger reasoning model |
+
+---
+
+# 3.3. The Three Steps
+
+| Step | What you do |
+|------|-------------|
+| **Constrain** | Files, contracts, examples in the prompt |
+| **Self-critique** | Ask what edge cases or style drift remain |
+| **Test** | vitest + `npm test` as ground truth |
+
+---
+
+# 3.3. The Three Steps (CV Builder)
 
 ```
 Step 1: "Add generateLanguages(). Constraints: ..."
@@ -67,135 +124,226 @@ Step 3: "Add vitest cases. Run npm test."
 
 ---
 
-# 3.3 — Demo: Hallucination
+# 3.3. Hallucination Red Flags
 
-```
-❌  "Add generateAwards() using \resumeAwardHeading"
-     → doesn't exist — agent invents it
-
-✅  "Add generateAwards() — REUSE \resumeProjectHeading
-     the way generateCertifications() does"
-```
+- Calls to functions that **don't exist** in the library
+- Import paths that **look plausible** but are invented
+- Config options with **wrong names**
+- Logic that assumes **your machine only**
 
 ---
 
-# 3.4 — Debug Mode
+# 3.3. Demo: Verify Loop (live)
+
+**Don't script a hallucination**. Agent often reads `resume.tex` and self-corrects.
+
+```
+Constrain  → generateLanguages + @files + FR-026
+Critique   → "What edge cases are missing?"
+Test       → vitest + npm test
+```
+
+Hallucinations: red flags + Ask check. Hands-on → Exercise 3b
+
+---
+
+# 3.4. Debug. Four Layers
+
+| Layer | When |
+|-------|------|
+| **1 Inline** | Red underline → lightbulb → Fix with AI |
+| **2 Terminal** | `@Terminals`, fix the error |
+| **3 Debug mode** | Symptom, unknown cause |
+| **4 Paste log** | pdfTeX / WASM, trace from log |
+
+---
+
+# 3.4. Debug Mode
 
 **Give it the symptom, not the hypothesis.**
 
 ```
 ✅  "The PDF is empty when all sections are filled."
-❌  "I think the bug is in line 42 — fix it."
+❌  "I think the bug is in line 42. Fix it."
 ```
+
+| Debug mode | Agent mode |
+|---|---|
+| Symptom, cause unknown | You know what's broken |
+| Spans multiple files | Fix in one known location |
+| Agent investigates | Agent implements known fix |
 
 ---
 
-# 3.5 — Test Generation
+# 3.5. Test Generation
 
-**Always reference an existing test.**
+**Always reference an existing test**. or the agent invents its own structure.
 
 ```
 "Write vitest cases for generateProjects().
- Match the style in @tests/unit/latex-generator.test.ts"
+ Cover: empty array, tech string, no bullets, ampersand escaping.
+ Match @tests/unit/latex-generator.test.ts. describe/it nesting,
+ fixture pattern at top of file."
 ```
 
 ---
 
-# 3.5 — Exercise 3
+# 3.5. What to Specify in the Prompt
 
-**Agent mode + output quality + debug + TDD**
-→ `exercises/README.md § 3a–3f`
+- **Edge cases**. To cover. don't leave domain cases to the agent
+- **Test file**. To match. style, nesting, assertion patterns
+- **Data style**. fixtures, factories, or inline data
+- **Run tests**. say whether to run `npm test` after writing
 
 ---
 
-# 3.6 — Sub-agents
+# 3.5. TDD with Agent
+
+```
+Write failing tests first → implement → npm test → iterate until green
+```
+
+Red-green-refactor: agent creates test file, implementation, runs tests, fixes.
+
+**After a bug fix:**. Ask for a **regression test** in the matching test file.
+
+---
+
+# 3.5. Agent-Generated Test Risks
+
+| Risk | Mitigation |
+|---|---|
+| Tests implementation, not behaviour | Would test break on refactor? |
+| Expected values copied from buggy output | Verify values independently |
+| Missing domain edge cases | **Specify edge cases in the prompt** |
+| `.toBeDefined()` only | "Every assertion checks a specific value" |
+
+---
+
+# 3.5. Exercise 3
+
+**Agent mode + output quality + debug + TDD**
+→ `exercises/README.md § 3a-3f`
+
+---
+
+# 3.6. Sub-agents
 
 Each sub-agent gets its **own context window**.
 
-| Built-in | Purpose |
-|----------|---------|
-| **Explore** | Codebase search |
-| **Bash** | Shell commands |
-| **Browser** | Browser interaction |
+| Built-in | Purpose | Why isolated |
+|----------|---------|--------------|
+| **Explore** | Codebase search | Uses faster model 10× parallel searches |
+| **Bash** | Shell commands | Verbose output stays out of main context |
+| **Browser** | Browser interaction | Noisy DOM snapshots filtered to essentials |
 
-These fire **automatically**.
-
----
-
-# 3.6 — Custom Sub-agents
-
-```
-.cursor/agents/
-├── verifier.md
-├── security-auditor.md
-└── section-builder.md
-```
-
-Invoke: `/verifier`, `/security-auditor`, or automatic via description.
+Fire **automatically**. Can launch child sub-agents (since 2.5).
 
 ---
 
-# 3.6 — Multitask Mode
+# 3.6. Custom Sub-agents
+
+`.cursor/agents/` (project). `~/.cursor/agents/` (user)
+
+```yaml
+# .cursor/agents/verifier.md
+---
+name: verifier
+description: Validates completed work. Use after tasks are marked done.
+model: inherit
+readonly: true
+---
+```
+
+Invoke: `/verifier <task>` or automatic via `description` field.
+
+---
+
+# 3.6. Subagents vs Skills
+
+| Use subagents when… | Use skills when… |
+|---|---|
+| Context isolation for long research | Single-purpose task |
+| Multiple parallel workstreams | Quick, repeatable action |
+| Specialized expertise across steps | Completes in one shot |
+| Independent verification of work | No separate context needed |
+
+---
+
+# 3.6. Multitask Mode
+
+**`/multitask`**. Split work into parallel sub-agents.
 
 You describe the **end state**.
 The agent **decomposes, delegates, synthesises**.
 
----
-
-# 3.6 — Worktrees
-
-```bash
-git worktree add ../cv-builder-feature feature/x
-cursor ../cv-builder-feature
-```
-
-Two windows. Two agents. Zero conflicts.
-
-> Also: smaller PRs. One worktree = one feature = one PR.
+> Submit follow-ups while agents run. They queue automatically.
 
 ---
 
-# 3.6 — Best-of-N
+# 3.6. Worktrees
 
 ```
-           ┌── attempt 1 (Model A)
-prompt ───►├── attempt 2 (Model B)
-           └── attempt 3 (Model C)
+/worktree fix the login race condition
+```
+
+Isolated Git checkout. Main branch untouched.
+`/apply-worktree` to bring changes back.
+
+Configure setup: `.cursor/worktrees.json` (deps, env, migrations).
+
+---
+
+# 3.6. Best-of-N
+
+```
+/best-of-n sonnet,gpt,composer fix the flaky logout test
+```
+
+```
+           ┌── worktree 1 (Sonnet)
+prompt ───►├── worktree 2 (GPT)
+           └── worktree 3 (Composer)
                     │
-           pick best · discard rest
+          parent agent compares. You pick /apply-worktree
 ```
 
 ---
 
-# 3.6 — Background Agents
+# 3.6. Cloud Agents (optional)
+
+**Not on every laptop** (plan, privacy mode, org policy). No Cloud toggle? Skip the live demo.
 
 ```
-Cmd+L → Agent → Background toggle → submit → close laptop
+When enabled:  Cloud toggle → VM runs while laptop sleeps
+Workshop path: /worktree + local Agent (same idea, stays on machine)
+Also:          /multitask, queued Agent messages
 ```
 
 ---
 
-# 3.6 — Exercise 4
+# 3.6. Exercise 4
 
 **Sub-agents, worktrees, Best-of-N, custom agents**
-→ `exercises/README.md § 4a–4e`
+→ `exercises/README.md § 4a-4e`
 
 ---
 
-# Part 3 — Takeaways
+# Part 3. Takeaways
 
-1. **Agent** — describe the goal, not the steps
-2. **Output quality** — constrain, critique, test
-3. **Debug mode** — symptom, not hypothesis
-4. **Sub-agents** — context isolation + parallelism
-5. **Worktrees** — true parallel branches
-6. **Best-of-N** — same task, pick the best diff
-7. **Background** — long tasks without you
+1. **Agent**. Describe the goal, not the steps. Plan before big tasks.
+2. **Verify before trusting**. Constrain, critique, test.
+3. **Debug mode**. Symptom, not hypothesis. Four escalation layers.
+4. **Tests**. Reference an existing file. Specify edge cases. Run `npm test`.
+5. **Sub-agents**. Context isolation + parallelism.
+6. **Worktrees**. `/worktree` for isolation. `/apply-worktree` to merge.
+7. **Best-of-N**. `/best-of-n` same task across models.
+8. **Cloud Agents** (if enabled). Else worktree + local Agent for long tasks.
 
 ---
 
 <!-- _class: title -->
 
-# ☕ Break — 5 min
+# ☕ Break  5 min
 
 ## Part 4 → Skills, Spec-Kit, Security, MCP & Team

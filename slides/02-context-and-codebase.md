@@ -25,24 +25,61 @@ style: |
 
 ---
 
-# 2.1 — Why Context Is Everything
+# 2.1. Why Context Is Everything
 
 > The difference between a mediocre AI response and an excellent one
-> is usually **not the model — it is the context.**
+> is usually **not the model it is the context.**
+
+Hallucinations, shallow fixes, wrong architecture
+→ mostly **context problems**, not model problems.
 
 ---
 
-# 2.2 — Codebase Indexing
+# 2.2. Codebase Indexing
 
-- Runs on project open, then incrementally
-- Agent searches it **autonomously**
-- `.cursorignore` excludes noise (WASM, node_modules, secrets)
+- Runs on project open, then **incrementally** on file changes
+- Creates **embeddings** for semantic similarity search (RAG)
+- Agent queries it **autonomously**. You never trigger it
+- Also powers Tab autocomplete's multi-file awareness
 
-> Let indexing finish before starting a complex session.
+> Let indexing finish before a complex session.
+> Check: `Cursor Settings` → `Indexing & Docs`
 
 ---
 
-# 2.3 — The `@` Context System
+# 2.2. What Affects Search Quality
+
+- **File size** >500 lines get chunked; split for better retrieval
+- **Naming**. Descriptive names improve semantic matches
+- **Comments**. Help the index understand intent
+- **Stale index**. Wait a few seconds after large refactors
+
+---
+
+# 2.2. `.cursorignore` vs `.gitignore`
+
+**`.gitignore`** Cursor respects it for indexing (already excluded = already out)
+
+**`.cursorignore`**. Also blocks Agent from **reading** those paths
+
+```
+public/core/busytex/    # 680 MB WASM out via .gitignore
+.env                    # secrets add to .cursorignore too
+dist/
+__pycache__/
+```
+
+---
+
+# 2.2. Large Repo Strategies
+
+- **Monorepos**. Open only the package(s) you need
+- **Multi-root**. Each root indexed independently; agent searches all
+- **Build output**. Exclude `dist/`, `target/`, `__pycache__/`, `*.pb.go`
+
+---
+
+# 2.3. The `@` Context System
 
 | Symbol | What it pulls in |
 |--------|-----------------|
@@ -50,39 +87,60 @@ style: |
 | `@<folder>/` | All files in directory |
 | `@Docs` | Library documentation |
 | `@Terminals` | Terminal output |
-| `@Commit` | Uncommitted changes |
-| `@Branch` | Branch diff vs. main |
+| `@Commit` | Uncommitted changes (staged + unstaged) |
+| `@Branch` | Full branch diff vs. main |
 | `@Past Chats` | Previous conversation |
+| `@Browser` | Built-in browser context |
 
 ---
 
-# 2.3 — Implicit (no symbol needed)
+# 2.3. Implicit (no symbol needed)
 
-**Codebase search** — just ask, agent searches the index
+**Codebase search**. Just ask; agent searches the index automatically
 
-**Web search** — ask about current info, agent searches the web
+**Web search**. Ask about current info; agent searches the web
+
+> If the agent isn't finding code, use explicit `@Files` to point it there.
 
 ---
 
-# 2.3 — Exercise 2
+# 2.3. Pinning a Function
+
+Can't use `@file::function` instead:
+
+1. **Select the function**. In the editor → `Cmd+L` (Add to Chat)
+2. Or attach the file with `@` and **name the function** in the prompt
+
+```
+"@src/lib/latex-generator.ts: look at generateSkills
+ and add a matching generateLanguages"
+```
+
+---
+
+# 2.3. Exercise 2
 
 **Try each `@` symbol on the CV Builder**
-→ `exercises/README.md § 2a–2d`
+→ `exercises/README.md § 2a-2d`
 
 ---
 
-# 2.4 — `.cursor/rules`
+# 2.4. `.cursor/rules`
+
+Persistent instructions for Agent. Committed to git. Team-wide.
 
 | Type | When applied |
 |------|-------------|
-| **Always** | Every request |
-| **Auto-attached** | File globs match |
-| **Agent-requested** | AI decides |
-| **Manual** | You `@` it |
+| **Always Apply** | Every Agent session (`alwaysApply: true`) |
+| **Specific Files** | When matching files are in context (`globs`) |
+| **Intelligently** | Agent decides based on `description` |
+| **Manually** | Only when you `@`-mention the rule |
+
+> Rules apply to **Agent (Chat) only**. Not Tab or `Cmd+K`.
 
 ---
 
-# 2.4 — The CV Builder's Rule
+# 2.4. The CV Builder's Rule
 
 ```markdown
 ---
@@ -91,21 +149,38 @@ alwaysApply: true
 Read the current plan at specs/001-resume-builder/plan.md
 ```
 
-**4 lines. One pointer. Every session reads the plan.**
+**Pointer, not content.** The agent reads the file when needed cheap.
+
+> Use prose pointers for large docs. Use `@filename` in rules only
+> for small templates that must load every time.
 
 ---
 
-# Part 2 — Takeaways
+# 2.4. Context Cost
 
-1. **Codebase indexing** — the invisible backbone
-2. **`@` system** — highest-leverage skill to master
-3. **`.cursor/rules`** — conventions as code, committed to git
-4. Better context = fewer hallucinations
+| Approach | Cost |
+|----------|------|
+| One pointer rule (`specify-rules.mdc`) | Minimal |
+| 3-4 glob-scoped rules | Low, only when files match |
+| One massive always-on `general.mdc` | High, every session avoid |
+
+> If your always-on rules feel like a full page of text,
+> you're eating into the context the agent needs for code.
+
+---
+
+# Part 2. Takeaways
+
+1. **Codebase indexing**. The invisible RAG backbone
+2. **`@` system**. Highest-leverage skill to master
+3. **`.cursor/rules`**. Conventions as code, committed to git
+4. **Pointer rules > fat rules**. Cheap and effective
+5. Better context = fewer hallucinations
 
 ---
 
 <!-- _class: title -->
 
-# ☕ Break — 10 min
+# ☕ Break  10 min
 
 ## Part 3 → Agentic Coding & Agent Mode

@@ -21,15 +21,15 @@ style: |
 # The Capability Stack
 
 ```
-Layer 1 — Tab / Cmd+K / Chat
-Layer 2 — @Context + Rules
-Layer 3 — Skills
-Layer 4 — Agent + Sub-agents + Multitask
-Layer 5 — Worktrees + Best-of-N + Background
-Layer 6 — MCP + Automations + Spec-Kit + Jira
+Layer 1. Tab / Cmd+K / Chat
+Layer 2. @Context + Rules
+Layer 3. Skills
+Layer 4. Agent + Sub-agents + Multitask
+Layer 5. Worktrees + Best-of-N + Cloud (optional)
+Layer 6. MCP + Automations + Spec-Kit + Jira
 ```
 
-Most engineers: layers 1–2. Today's goal: **comfort at 3–5**.
+Most engineers: layers 1-2. Today's goal: **comfort at 3-5**.
 
 ---
 
