@@ -761,13 +761,89 @@ If you only see **Local** (and maybe **Worktree**), you are on local Agent only 
 
 **Configuration via `.cursor/environment.json`:**
 
-Cloud agents run in configurable environments. Define initialization commands, start scripts, persistent terminals, and environment variables in `.cursor/environment.json`:
-- **Initialization commands** — install dependencies, run migrations, set up the environment
-- **Start scripts** — launch dev servers or watchers that persist for the session
-- **Persistent terminals** — terminals that stay alive across agent interactions
-- **Environment variables** — inject config without committing secrets
+Cloud agents run in configurable environments. Commit `.cursor/environment.json` so every cloud run uses the same setup. (This is **not** the same file as `.cursor/worktrees.json`, which configures **local** worktree setup.)
 
-**Secret management:** Manage secrets via Cursor's dashboard — encrypted-at-rest with KMS. Secrets are injected into the cloud environment at runtime.
+| Field | Purpose |
+|---|---|
+| `install` | Runs once before the agent (cached). Idempotent deps setup — e.g. `npm ci` |
+| `start` | Runs when the VM boots (after install) |
+| `terminals` | Long-lived processes in tmux (dev server, watchers) — shared by you and the agent |
+| `env` | Non-secret env vars only |
+| `snapshot` | Reuse a saved VM image from the Cloud Agents dashboard (fast restarts) |
+| `build` | Optional Dockerfile under `.cursor/` for system-level deps |
+
+**Secret management:** Do **not** put API keys in `environment.json`. Add secrets in [cursor.com/dashboard](https://cursor.com/dashboard) → Cloud Agents → Secrets (injected at runtime).
+
+#### Example: minimal (install + test only)
+
+Good when the agent only needs to edit code and run `npm test`:
+
+```json
+{
+  "install": "npm ci && npm test"
+}
+```
+
+#### Example: CV Builder (workshop repo)
+
+Vite app + vitest + BusyTeX assets. Lets a cloud agent run tests and optionally preview in the browser:
+
+```json
+{
+  "install": "npm ci && npm run download:tex-assets",
+  "start": "npm run build",
+  "terminals": [
+    {
+      "name": "dev",
+      "command": "npm run dev -- --host 0.0.0.0 --port 5173",
+      "ports": [5173]
+    }
+  ],
+  "env": {
+    "CI": "true"
+  }
+}
+```
+
+- **`install`** — deps + WASM/LaTeX assets the PDF preview needs (`download:tex-assets` is already in `package.json`).
+- **`start`** — optional sanity check that the project builds before the agent edits.
+- **`terminals`** — keeps `vite` running so the agent (or you via remote desktop) can hit `http://localhost:5173`.
+- Omit secrets; if you ever need private registry tokens, use the dashboard Secrets tab.
+
+#### Example: Dockerfile (custom base image)
+
+When you need apt packages, a specific Node version, or debuggers. Paths are relative to `.cursor/`:
+
+```json
+{
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "install": "npm ci && npm run download:tex-assets"
+}
+```
+
+`.cursor/Dockerfile` (sketch — do **not** `COPY` the whole repo; Cursor checks out the commit):
+
+```dockerfile
+FROM node:20-bookworm
+RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+WORKDIR /workspace
+```
+
+#### Example: snapshot (after dashboard setup)
+
+After you configure an environment in the Cloud Agents UI and snapshot the disk:
+
+```json
+{
+  "snapshot": "snapshot-20260212-00000000-0000-0000-0000-000000000000",
+  "install": "npm ci"
+}
+```
+
+Replace the ID with yours from **Cloud Agents → Environments** in the dashboard.
 
 **Development environments for cloud agents:**
 
