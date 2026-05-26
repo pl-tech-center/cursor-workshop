@@ -40,6 +40,11 @@ Cursor doesn't just complete what you're typing — it watches your edits and pr
 - The suggestion is plausible but subtly wrong — always read it
 - For anything architecturally significant — use Agent mode instead
 
+### Pro tips
+- Tab predictions improve dramatically when you have related files open in other tabs — open the test file alongside the implementation for best results
+- If autocomplete is consistently wrong, check your codebase index status — a stale or incomplete index degrades prediction quality
+- For multi-cursor edits, Cursor predicts the next-edit per cursor position — combine multi-cursor with Tab for batch renaming without regex
+
 ### Live demo (using the CV Builder app)
 ```
 1. Open src/lib/types.ts → add a new field `employmentType: 'full-time' | 'part-time' | 'contract' | 'freelance' | 'internship'` to the ExperienceEntry interface
@@ -96,6 +101,11 @@ Cmd+K in terminal →
 | Reject change | `Escape` |
 | Follow-up prompt | Just keep typing in the same bar |
 
+### Pro tips
+- Chain `Cmd+K` with undo (`Cmd+Z`) as a rapid exploration tool: prompt → review → undo → re-prompt with refined constraints
+- Select nothing and press `Cmd+K` to generate new code at the cursor position — useful for inserting a new function between existing ones
+- In the terminal, `Cmd+K` has access to your shell history — it can reference previous commands in its suggestions
+
 ### Demo (using the CV Builder app)
 ```
 1. Select generateExperience() in src/lib/latex-generator.ts → Cmd+K → "add an early return that returns '' if every entry is missing both jobTitle and company"
@@ -123,7 +133,7 @@ Chat (`Cmd+L`) has several modes. Switch between them with the mode selector at 
 | **Multitask** | Parallel agent sessions running concurrently | Multiple independent tasks at once |
 
 ### Agent mode (the default)
-This is where most work happens. The agent reads files, creates files, runs terminal commands, checks errors, and fixes them in a loop until the task is done.
+The workhorse. Agent searches your codebase, edits multiple files, runs terminal commands, and fixes errors on its own. Give it a task in plain language and it figures out which files to read, what changes to make, and how to verify the result.
 
 - Starts with `Cmd+L` — Agent is the default mode
 - Reviews diffs per file — accept individually or all at once
@@ -131,45 +141,80 @@ This is where most work happens. The agent reads files, creates files, runs term
 - Uses tools: file search, grep, read, write, terminal, MCP
 
 ### Ask mode (read-only exploration)
-No edits. The agent can search and read code but cannot modify anything. Use this for understanding, not doing.
+No edits. The agent searches your codebase and provides answers without making any changes. You should be using this mode **far more often than you probably are** — plan with Ask, implement with Agent.
 
-- The agent can still search the codebase index and read files
-- Useful for onboarding to unfamiliar code, planning before acting, or research
+- Useful for onboarding to unfamiliar code, exploring architecture, or research
 - Hover a code block in the response → click "Apply" to push it into a file (the one write-like action)
 
 ### Plan mode (review before execution)
-Agent proposes a numbered step-by-step plan before touching any code. You review, edit, or reject before it acts.
+Creates detailed implementation plans before writing any code. The agent researches your codebase, asks clarifying questions, and generates a reviewable plan you can edit before building.
 
-- Use for: tasks with multiple valid approaches, anything where a wrong first step is expensive to undo
-- The plan becomes a record of intent (useful for PR descriptions)
-- After approval, the agent executes exactly the approved steps
+- Use for: complex features with multiple valid approaches, tasks that touch many files, unclear requirements
+- Plans can be saved to the workspace for team sharing and documentation
+- If the agent builds something wrong, **revert and refine the plan** — often faster than fixing through follow-up prompts
+- Cursor suggests Plan mode automatically when you type keywords indicating complex tasks
 
 ### Debug mode (hypothesis-driven)
-You give it a **symptom** (not a hypothesis). The agent investigates autonomously — adding logging, running commands, reading output, narrowing the cause.
+For bugs that are hard to reproduce or understand. Instead of immediately writing code, the agent generates hypotheses, adds **temporary log statements that send data to a local debug server**, asks you to reproduce the bug, and uses the captured runtime information to pinpoint the exact issue.
 
-- Give it: "the PDF is empty when all sections are filled"
-- Don't give it: "I think the issue is in generateLatex" (that's your hypothesis — let it form its own)
+The loop:
+1. Explore files and generate hypotheses about root causes
+2. Add instrumentation (log statements → local debug server)
+3. Ask you to reproduce the bug (keeps you in the loop)
+4. Analyse captured logs → identify root cause from runtime evidence
+5. Make a targeted fix — often just a few lines
+6. You verify → agent removes all instrumentation
+
+Best for: bugs you can reproduce but can't figure out, race conditions, performance problems, regressions where something used to work. Covered in depth in Part 3.
+
+### Multitask mode / `/multitask`
+Spawns async sub-agents that run in parallel instead of queueing prompts sequentially. Can also auto-decompose a larger request into chunks and assign them to multiple sub-agents at the same time.
+
+- **Queue parallelisation** — stacked prompts run concurrently as background sub-agents
+- **Auto-decomposition** — one large request is split into independent chunks, each dispatched to its own sub-agent
+- Each sub-agent has its own context window; only the final summary returns to the parent
+- The parent stays interactive — you can draft the next prompt or review earlier diffs while the fleet runs
+- Combine with `/worktree` when sub-agents need to edit overlapping files (worktree gives filesystem isolation, multitask gives context-only isolation)
 - Covered in depth in Part 3
 
-### Multitask mode (parallel agents)
-Runs multiple agent sessions concurrently. Each session has its own context and can work on independent tasks simultaneously.
-
-- Use for: implementing multiple unrelated features, running tests while coding, research + implementation in parallel
-- Each task gets its own thread — they don't share context
-- Results appear as they complete — you review each independently
-- Covered in depth in Part 3
+### Switching modes
+- **`Shift+Tab`** to cycle through modes
+- Click the mode picker dropdown
+- Each mode uses its own context — switching starts a fresh context window
 
 ### Model selection — "explore cheap, commit expensive"
 
-Switch models with `Cmd+Shift+J` or in the model picker at the bottom of chat.
+Switch models with `Cmd+/` (cycle) or the model picker dropdown at the top of the chat input. Your selection persists across conversations until you change it. Set a default in `Cursor Settings` → `Models`.
 
-| Task type | Recommended model tier | Why |
+### Routing options
+
+| Option | What it does | Best for |
 |---|---|---|
-| Lookups, explanations, exploration | Fast model | Cheap, quick, good enough for reading |
-| Standard implementation, refactoring | Default model | Balanced quality/speed |
-| Complex architecture, tricky bugs, security review | Reasoning model | Needs deeper thinking, worth the latency |
+| **Auto** | Cursor picks per-request, balancing intelligence, cost, and reliability. Defaults to Composer 2; routes to stronger models when complexity warrants it. | Everyday tasks — leave it on unless you have a reason to override |
+| **Premium** | Cursor selects the most capable model for you (Opus-class). | Complex tasks where you want maximum quality without choosing manually |
+| **Manual** | You pick a specific model from the dropdown. | When you know which model you want, or when comparing models |
 
-The key habit: **don't use your most expensive model for "how does this function work?"** — save it for "redesign this module to handle concurrent writes safely."
+### Key models
+
+| Model | Provider | Strengths | When to pick it |
+|---|---|---|---|
+| **Composer 2.5** | Cursor | Fast, cheap, built for agentic coding | Default workhorse under Auto; speed-critical iteration |
+| **Claude Opus 4.7** | Anthropic | Top-tier reasoning, 1M context | Complex architecture, multi-step refactors, security review |
+| **Claude Sonnet 4.6** | Anthropic | Strong reasoning, lower cost than Opus | Budget-conscious daily work, extended thinking |
+| **GPT-5.5** | OpenAI | Strong agentic coding, 1M context | Alternative perspective when one model family keeps getting stuck |
+| **Gemini 3 Pro** | Google | Up to 1M context, multimodal | Image/diagram analysis, extreme context needs |
+
+### The key habit
+
+Don't use Opus for _"how does this function work?"_ — save it for _"redesign this module to handle concurrent writes safely."_ You can switch models **mid-conversation**: use a fast model for exploration, then step up to a reasoning model for implementation.
+
+### Sub-agent model selection
+
+Built-in sub-agents (Explore, Bash, Browser) select their model automatically. Custom sub-agents default to `inherit` (parent's model). Override with the `model` field in the sub-agent's YAML frontmatter.
+
+### Best-of-N for model calibration
+
+Run the same task across 3 models in parallel worktrees (`/best-of-n`) and compare outcomes. This is the cheapest way to learn which model your codebase actually prefers — the answer is rarely what benchmarks imply.
 
 ### The escalation pattern
 ```
@@ -190,6 +235,11 @@ Multiple independent tasks?        → Multitask mode
 Do you need to understand first?   → Ask mode, then switch to Agent
 Is it large/risky?                 → Plan mode → review → execute
 ```
+
+### Pro tips
+- You can switch models mid-conversation — start exploration with a fast model, then switch to a reasoning model for the implementation step with `Cmd+/`
+- Agent mode queues follow-up messages: submit your next instruction while the agent is busy and it runs automatically when the current task finishes. Drag to reorder queued messages.
+- Built-in sub-agents (Explore, Bash, Browser) select their model automatically — they use faster models by default for cost efficiency. Custom sub-agents inherit the parent's model unless you override with the `model` field.
 
 ### Demo (using the CV Builder app)
 ```
@@ -218,6 +268,10 @@ Is it large/risky?                 → Plan mode → review → execute
 - Never copy-paste from Chat — always use Apply
 - Start a new Chat thread when the conversation has been going more than 10–15 messages
 - Use `Cmd+K` in the terminal for shell commands you'd otherwise Google
+
+### Hands-on
+
+→ [Exercise 1 — Tab Autocomplete & `Cmd+K`](./exercises/README.md#exercise-1--tab-autocomplete--cmdk) *(during this part, ~10 min)*
 
 ---
 

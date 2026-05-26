@@ -573,4 +573,10 @@ Most engineers live at Layers 1–2. Today's goal is comfort at 3–5 and awaren
 
 ---
 
+### Hands-on
+
+→ [Exercise 5 — Prompt Engineering, Skills, Spec-Kit & MCP](./exercises/README.md#exercise-5--prompt-engineering-skills-spec-kit--mcp) *(after this part, ~20 min)*
+
+---
+
 *[← Back to Part 3](./03-agentic-coding.md) · [Exercises →](./exercises/)*
