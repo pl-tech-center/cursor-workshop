@@ -31,9 +31,11 @@ Cursor indexes your codebase to enable semantic search. Since `@Codebase` no lon
 > **Important:** If the index is incomplete or stale, the agent will miss relevant code. Always let indexing finish before starting a complex agent session — especially on a fresh clone.
 
 ### What gets indexed
-- All text files in the workspace that aren't excluded (source code, markdown, config files — tracked or untracked)
-- Respects `.gitignore` and `.cursorignore`
+- All text files tracked by git (source code, markdown, config files)
+- Respects `.gitignore`, `.cursorignore`, and `.cursorindexingignore` (see below)
 - Binary files, images, and compiled output are excluded automatically
+
+> **`.gitignore` vs `.cursorignore`:** Per [Cursor docs](https://cursor.com/docs/reference/ignore-file), `.gitignore` patterns apply to **indexing** by default. `.cursorignore` is the stricter block — it also excludes files from Agent, Tab, and `@`-mention access. cv-builder does not ship a `.cursorignore` yet; it relies on `.gitignore` for `public/core/busytex/` and `.env*`. For secrets, add `.cursorignore` or use the global ignore list in Settings (see Part 4 §4.5).
 
 ### What affects search quality
 
@@ -46,7 +48,9 @@ Cursor indexes your codebase to enable semantic search. Since `@Codebase` no lon
 
 ### `.cursorignore`
 
-Excludes files from both the index **and** from being read by the agent. Use it for build artifacts, large bundled assets, secrets, and noise.
+Excludes files from the index **and** from being read by Agent, Tab, and `@`-mentions. Use it for build artifacts, large bundled assets, secrets, and noise.
+
+Recommended for cv-builder (not committed yet — add as a team exercise or follow-up):
 
 > **`.gitignore` vs `.cursorignore`:** Cursor respects `.gitignore` for indexing — so paths already gitignored stay out of the index without a `.cursorignore`. Add `.cursorignore` when you also want to block Agent from *reading* paths (e.g. secrets that might be tracked, or noise you still keep on disk).
 
@@ -55,7 +59,7 @@ Excludes files from both the index **and** from being read by the agent. Use it 
 node_modules/
 dist/
 .vite/
-public/core/busytex/       # ~680 MB of WASM assets — keep out of the index
+public/core/busytex/       # ~650 MB of WASM assets — keep out of AI context
 *.pdf
 .env
 .env.*
@@ -63,7 +67,7 @@ public/core/busytex/       # ~680 MB of WASM assets — keep out of the index
 secrets/
 ```
 
-In cv-builder, `public/core/busytex/` is excluded via `.gitignore` instead — see demo step 3 below.
+For indexing-only exclusion (file still readable via `@file` on demand), use `.cursorindexingignore` instead.
 
 ### Large repo strategies
 - **Monorepos:** Only open workspace folders get indexed. Either open just the package(s) you need, or open the monorepo root and use `.cursorignore` to exclude packages you aren't working on
@@ -88,20 +92,10 @@ If the agent misses relevant code during a session:
       ResumeData (from App.tsx) → ReviewView.tsx
                  → generateLatex() in src/lib/latex-generator.ts
                  → compilePdf() in src/lib/pdf-compiler.ts (texlyre-busytex Worker)
-                 → Blob URL → <iframe> in ReviewView.tsx
-3. Open .gitignore → point at public/core/busytex/
-   → Cursor respects .gitignore for indexing, so ~680 MB of WASM stays out even
-     without a .cursorignore. Contrast with the example block above: .cursorignore
-     goes further — it also blocks Agent from reading those paths.
-4. Cmd+L → "How does the app compile LaTeX in the browser?"
-   → No @Files — the prompt names no file, so this exercises codebase search.
-   → Good answer: surfaces src/lib/pdf-compiler.ts and the texlyre-busytex JS API —
-      BusyTexRunner (Worker via initialize(true)) → PdfLatex.compile() → PDF bytes
-      → Blob URL. It should not invent low-level WASM/Emscripten APIs — those live
-      inside the gitignored assets under public/core/busytex/; the app only calls
-      BusyTexRunner and PdfLatex from the npm package.
-   → If the agent misses pdf-compiler.ts, use the troubleshooting steps above: @Files or
-     "search the codebase for browser-side LaTeX compilation".
+                 → Blob URL → <iframe> in src/components/ReviewView.tsx
+3. Show .gitignore — note that public/core/busytex/ (~650 MB of WASM) is excluded from indexing; mention that `.cursorignore` would also block Agent access (Part 4 §4.5)
+4. Ask: "What WASM functions does pdf-compiler.ts call?"
+   → Agent finds the right file even without @Files, because the index has good embeddings for it
 ```
 
 ---
@@ -312,9 +306,9 @@ Rules files use Markdown. Cursor supports both `.md` and `.mdc` extensions — p
 | **Apply Intelligently** | Agent decides when to use based on `description` | `description: "…"` in frontmatter |
 | **Apply Manually** | Only when you `@`-mention the rule | Good for one-off templates |
 
-### The CV Builder's main rule pattern — `specify-rules.mdc`
+### The CV Builder's actual rules
 
-The CV Builder's main pattern is `specify-rules.mdc` — a short always-on rule that points at the active plan. (There's also `speckit-commit-workflow.mdc` for Spec Kit commits.) It's a great pattern worth copying:
+The CV Builder's primary always-on rule is `specify-rules.mdc` — a pattern worth copying on any Spec-Kit project:
 
 ```markdown
 ---
@@ -324,15 +318,22 @@ alwaysApply: true
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/001-resume-builder/plan.md
+at specs/008-github-mcp-integration/plan.md
 <!-- SPECKIT END -->
 ```
 
-This is a short, always-on rule with a 3-line instruction body that tells every Agent session to read `specs/001-resume-builder/plan.md` — you don't need to `@`-mention the plan yourself. What's injected is the **pointer instruction**, not the plan contents themselves (the agent usually reads the file when relevant). The plan is the source of truth for stack decisions in `research.md` (e.g. **R-001**: client-side PDF compilation via `texlyre-busytex`; **R-005**: which shadcn/ui components to scaffold), constitution gates, and file layout.
+This is a 4-line, always-on rule that points the agent at the **active feature plan**. The path between `<!-- SPECKIT START -->` and `<!-- SPECKIT END -->` is **not static** — `/speckit-plan` rewrites it to the plan file it just created (e.g. after a Languages demo, it would point at `specs/002-languages-section/plan.md`). The checked-in value reflects whichever feature was planned most recently; on a fresh clone today that is `008-github-mcp-integration`.
 
-**Pointer vs `@file` in rules:** Prose like "read `plan.md`" injects only the instruction — the agent reads the file when needed (cheap for large docs). Writing `@specs/001-resume-builder/plan.md` in the rule body embeds that file's contents whenever the rule applies (guaranteed, but costly for always-on rules). Use `@filename` for small templates; use prose pointers for large living documents.
+The plan is the source of truth for stack decisions, constitution gates, and file layout — so every chat in the project sees that context without any `@` reference.
 
-Per-project rules don't have to be long. One always-on pointer + a couple of glob-scoped rules is usually enough.
+Two other rules ship in `.cursor/rules/` (not always-on):
+
+| Rule | When it applies |
+|---|---|
+| `github-mcp-agent.mdc` | GitHub MCP writes — confirmation gates, repo targeting (Part 4 §4.4) |
+| `speckit-commit-workflow.mdc` | Spec Kit `[T{id}]` task commits during `/speckit-implement` |
+
+Per-project rules don't have to be long. One always-on pointer + a couple of scoped or on-demand rules is usually enough.
 
 ### Example additions you might layer on top
 
@@ -377,9 +378,10 @@ alwaysApply: false
 
 ### Demo (using the CV Builder app)
 ```
-1. Show `.cursor/rules/specify-rules.mdc` — short file with a 3-line instruction body, `alwaysApply: true`, pointer to the plan
-2. Cmd+L → "Add a generator for a Languages section" — note the rule instructs the agent to read `plan.md` (it typically picks up Constitution VI, section ordering, and file layout without you `@`-mentioning the plan)
-3. Show that rules are committed to git → new team members get them automatically (and the spec-kit skills too)
+1. Show .cursor/rules/specify-rules.mdc — 4 lines, alwaysApply: true, points at the active plan (currently specs/008-github-mcp-integration/plan.md)
+2. Cmd+L → "Add a generator for a Languages section" — note that Cursor reads plan.md before suggesting code (it knows about Constitution VI, the section ordering rule, the file layout)
+3. Open a fresh project without rules → same prompt → suggestions wander away from the project's conventions
+4. Show that rules and skills are committed to git → new team members get them automatically (16 skills: 14 speckit-* + create-issue + overview)
 ```
 
 ### Context window impact
@@ -425,7 +427,8 @@ Relative context costs below are workshop heuristics — Cursor docs confirm rul
 
 ### Common mistakes
 - Asking vague questions without `@` references
-- Not excluding build assets (`.gitignore` and/or `.cursorignore`) → slow indexing on huge repos
+- Relying on `.gitignore` alone for secrets — add `.cursorignore` (or global ignore) so Agent and Tab cannot read them
+- Not setting up ignore rules → slow indexing on huge repos (cv-builder: `public/core/busytex/` is ~650 MB)
 - Forgetting to commit `.cursor/rules` → team doesn't benefit
 - Writing rules that are too vague ("write good code") — be specific and concrete
 
