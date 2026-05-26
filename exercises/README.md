@@ -13,10 +13,20 @@ Hands-on exercises to reinforce each section. Each exercise is 5–10 minutes. D
 > npm run dev                   # http://localhost:5173
 > ```
 
+### Exercise → Part map
+
+| Exercise | Part | Timing |
+|---|---|---|
+| [Exercise 1 — Tab Autocomplete & `Cmd+K`](#exercise-1--tab-autocomplete--cmdk) | [Part 1 — Core Features](../01-fundamentals.md) | During Part 1, ~10 min |
+| [Exercise 2 — Context & `@` Symbols](#exercise-2--context---symbols) | [Part 2 — Context & Codebase Intelligence](../02-context-and-codebase.md) | After Part 2, ~10 min |
+| [Exercise 3 — Agent Mode & Output Quality](#exercise-3--agent-mode--output-quality) | [Part 3 — Agentic Coding & Agent Mode](../03-agentic-coding.md) | After Part 3, ~15 min |
+| [Exercise 4 — Sub-agents & Parallelism](#exercise-4--sub-agents--parallelism) | [Part 3 — Agentic Coding & Agent Mode](../03-agentic-coding.md) | After Part 3, ~15 min |
+| [Exercise 5 — Prompt Engineering, Skills, Spec-Kit & MCP](#exercise-5--prompt-engineering-skills-spec-kit--mcp) | [Part 4 — Skills, Spec-Kit, Security, MCP & Team Practices](../04-advanced-workflows.md) | After Part 4, ~20 min |
+
 ---
 
 ## Exercise 1 — Tab Autocomplete & `Cmd+K`
-*During Part 1 · ~10 min · follow along with the presenter*
+*During [Part 1 — Core Features](../01-fundamentals.md) · ~10 min · follow along with the presenter*
 
 ### 1a. Next-edit prediction (Tab)
 1. Open `src/lib/types.ts`
@@ -42,7 +52,7 @@ Hands-on exercises to reinforce each section. Each exercise is 5–10 minutes. D
 ---
 
 ## Exercise 2 — Context & `@` Symbols
-*After Part 2 · ~15 min*
+*After [Part 2 — Context & Codebase Intelligence](../02-context-and-codebase.md) · ~10 min*
 
 Reinforces [Part 2 — Context & Codebase Intelligence](../02-context-and-codebase.md): indexing (§2.2), the `@` system (§2.3), and `.cursor/rules` (§2.4).
 
@@ -100,7 +110,7 @@ The CV Builder ships **two** rules in `.cursor/rules/`:
 ---
 
 ## Exercise 3 — Agent Mode & Output Quality
-*After Part 3 · ~15 min*
+*After [Part 3 — Agentic Coding & Agent Mode](../03-agentic-coding.md) · ~15 min*
 
 ### 3a. Add a Languages section with Agent mode
 1. `Cmd+L` → Agent tab
@@ -163,7 +173,7 @@ The CV Builder ships **two** rules in `.cursor/rules/`:
 ---
 
 ## Exercise 4 — Sub-agents & Parallelism
-*After Part 3 (sub-agents section) · ~15 min*
+*After [Part 3 — Agentic Coding & Agent Mode](../03-agentic-coding.md) (sub-agents section) · ~15 min*
 
 > The #1 requested topic — this is where it all comes together.
 
@@ -357,7 +367,7 @@ Custom sub-agents live in `.cursor/agents/` as markdown files with YAML frontmat
 ---
 
 ## Exercise 5 — Prompt Engineering, Skills, Spec-Kit & MCP
-*After Part 4 · ~20 min*
+*After [Part 4 — Skills, Spec-Kit, Security, MCP & Team Practices](../04-advanced-workflows.md) · ~20 min*
 
 ### 5a. Prompt quality comparison
 Try both prompts on the CV Builder and compare:

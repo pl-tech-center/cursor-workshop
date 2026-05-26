@@ -9,7 +9,15 @@
 
 ## 3.1 What Is "Agentic" Coding? (5 min)
 
-The shift from **autocomplete → chat → agent** represents a fundamental change in how you interact with AI.
+A coding agent is a program powered by an LLM that performs development tasks **autonomously**. It doesn't just generate text — it uses a **reason-and-act loop**: break the goal into sub-tasks, use tools (file system, terminal, version control) to execute each one, observe the result, and iterate.
+
+The defining feature is the **self-correction loop**. The agent doesn't output code and stop. It writes code, runs tests, observes failures, and rewrites until the tests pass. This is what separates an agent from autocomplete or a chatbot.
+
+### Agentic coding vs. "vibe coding"
+
+"Vibe coding" describes a flow state where you focus on logic and creativity while AI handles syntax and boilerplate. **Agentic coding** is the methodology that enables that state — the structured, autonomous process where the AI handles execution. Vibe coding is the experience; agentic coding is the engine.
+
+### The shift
 
 | Mode | You do | AI does |
 |---|---|---|
@@ -24,9 +32,9 @@ The shift from **autocomplete → chat → agent** represents a fundamental chan
 ## 3.2 Agent Mode: Multi-File Editing (15 min)
 
 ### Opening Agent mode
-- `Cmd+L` — opens the chat panel
-- Switch to the **Agent** tab at the top
-- Agent mode = full autonomous multi-file execution loop
+- `Cmd+L` — opens the chat panel (Agent is the default mode)
+- `Shift+Tab` to cycle between modes (Agent → Plan → Ask)
+- Or use the mode picker dropdown in the chat input
 
 ### Ask → Plan → Agent → Multitask — the escalation pattern
 

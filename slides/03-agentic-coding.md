@@ -23,7 +23,18 @@ style: |
 # Part 3
 ## Agentic Coding & Agent Mode
 
-**#1 requested topic — 71%**
+---
+
+# 3.1 — What Is a Coding Agent?
+
+**Reason-and-act loop:**
+Break goal into sub-tasks → use tools → observe result → iterate
+
+**Self-correction loop:**
+Write code → run tests → observe failure → rewrite → pass
+
+> "Vibe coding" is the experience.
+> **Agentic coding** is the engine.
 
 ---
 
