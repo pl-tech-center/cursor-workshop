@@ -151,8 +151,8 @@ The section accepts a single free-text field (e.g., "English (native), Spanish (
 appears in the PDF between Skills and Projects, omitted when empty.
 
 → before_specify hook (`.specify/extensions.yml`): runs /speckit-git-feature first — new branch, then spec
-→ creates specs/{next-number}-{short-name}/ with spec.md + checklists/requirements.md
-   (e.g. specs/008-languages-section/ — next number after scanning existing specs/)
+→ creates specs/002-languages-section/ with spec.md + checklists/requirements.md
+   (branch `002-languages-section` — speckit-specify auto-numbers by scanning existing specs/)
 → may ask up to 3 clarifying questions for any [NEEDS CLARIFICATION] markers
 
 /speckit-plan
@@ -210,26 +210,71 @@ description: Add a new conditional LaTeX section to the CV Builder following exi
 
 We already invoked the speckit-* skills in 4.2 to add a Languages section. Now zoom into what's already there: `specs/001-resume-builder/` is the complete artifact set produced by Spec-Kit for the CV Builder itself.
 
+### The command sequence (at a glance)
+
+Spec-Kit separates **what to build** from **how to build it**. The [official workflow](https://github.com/github/spec-kit) is a fixed pipeline — each command produces committed artefacts the next command reads:
+
+```
+/speckit.constitution          once per project → .specify/memory/constitution.md
+        ↓
+/speckit.specify               per feature → spec.md (+ feature branch)
+        ↓
+/speckit.clarify               optional — resolve ambiguities before planning
+        ↓
+/speckit.plan                  tech stack & architecture → plan.md, research.md, …
+        ↓
+/speckit.tasks                 dependency-ordered work → tasks.md
+        ↓
+/speckit.analyze               optional — cross-check spec / plan / tasks before coding
+        ↓
+/speckit.implement             execute tasks.md; one [T{id}] commit per task
+```
+
+| Command | Focus | Key output |
+|---|---|---|
+| `/speckit.constitution` | Project principles | `.specify/memory/constitution.md` |
+| `/speckit.specify` | **What & why** (no tech stack) | `specs/NNN-feature/spec.md` |
+| `/speckit.clarify` | Structured Q&A on gaps | Clarifications section in `spec.md` |
+| `/speckit.plan` | **How** — stack, structure, contracts | `plan.md`, `research.md`, `data-model.md`, `contracts/` |
+| `/speckit.tasks` | Actionable, ordered work items | `tasks.md` with `[P]` parallel tags |
+| `/speckit.analyze` | Consistency & coverage audit | Findings report (no file changes) |
+| `/speckit.implement` | Build it | Code + `[T{id}]` commits |
+
+The CV Builder's `001-resume-builder` folder is the output of running this pipeline once, end to end. Section 4.2's Languages demo is the same sequence on a new feature: `002-languages-section`.
+
+### Greenfield vs incremental
+
+The diagram above starts with `/speckit.constitution`, but the §4.2 demo starts at `/speckit-specify` — both are correct, depending on context:
+
+| Scenario | Where you start | Full sequence |
+|---|---|---|
+| **Greenfield** (001) | `/speckit.constitution` | constitution → specify → clarify? → plan → tasks → analyze? → implement |
+| **New feature** (002 Languages, …) | `/speckit-specify` | specify → clarify? → plan → tasks → analyze? → implement |
+
+The constitution (`.specify/memory/constitution.md`) is written once per project. Every later feature reuses it — `/speckit-plan` still runs a Constitution Check against those principles, but you don't re-run `/speckit.constitution` unless the rules themselves need updating. Clarify and analyze remain optional on every feature.
+
+### What's in `specs/001-resume-builder/`
+
 ```
 specs/001-resume-builder/
-├── spec.md              ~25 KB — 6 user stories, 32 functional requirements,
+├── spec.md              ← /speckit-specify — 6 user stories, 32 functional requirements,
 │                        9 success criteria, 9 clarifications, edge cases
-├── plan.md              Constitution Check (6 principles), Technical Context,
+├── plan.md              ← /speckit-plan — Constitution Check (6 principles), Technical Context,
 │                        Project Structure, post-design re-check
-├── research.md          R-001…R-005 — every "why this library" decision
-├── data-model.md        Per-entity field-to-LaTeX-argument mapping table
-├── contracts/           latex-generation.md — the escape contract
+├── research.md          ← /speckit-plan — R-001…R-005: every "why this library" decision
+├── data-model.md        ← /speckit-plan — per-entity field-to-LaTeX-argument mapping table
+├── contracts/           ← /speckit-plan — latex-generation.md: the escape contract
 ├── checklists/
-│   └── requirements.md  Quality gate produced by /speckit-specify
-├── tasks.md             45 tasks across 9 phases, [P]arallel tags,
+│   └── requirements.md  ← /speckit-specify — quality gate for the spec itself
+├── tasks.md             ← /speckit-tasks — 45 tasks across 9 phases, [P]arallel tags,
 │                        traceable back to user stories
-└── quickstart.md        npm install → npm run dev verification steps
+└── quickstart.md        ← /speckit-plan — npm install → npm run dev verification steps
 ```
 
 **What this gives you in practice:**
 
 - **New team members** read `spec.md` and `plan.md` instead of reverse-engineering the code.
-- **Cursor itself** reads them too — `specify-rules.mdc` makes `plan.md` always-on context.
+- **Cursor itself** reads them too — `specify-rules.mdc` always points at the current feature's `plan.md`. `/speckit-plan` updates it automatically — so after the Languages demo's plan step, Cursor loads that feature's technical context, not 001's.
 - **The constitution** (in plan.md) is what stops Cursor from inventing helper layers — every chat is reminded that files must stay under 200 lines, that there's no state-management library, that pure functions go in `src/lib/`.
 - **Tasks** carry through to commits — every PR diff traces back to a task ID, which traces back to an FR, which traces back to a user story.
 
