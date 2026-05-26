@@ -8,15 +8,25 @@ Hands-on exercises to reinforce each section. Each exercise is 5–10 minutes. D
 > ```bash
 > cd ../cv-builder
 > npm install
-> npm run download:tex-assets   # one-time, ~150 MB of TeX Live WASM
+> npm run download:tex-assets   # one-time, ~680 MB of TeX Live WASM
 > npm test                      # should be all green before you begin
 > npm run dev                   # http://localhost:5173
 > ```
 
+### Exercise → Part map
+
+| Exercise | Part | Timing |
+|---|---|---|
+| [Exercise 1 — Tab Autocomplete & `Cmd+K`](#exercise-1--tab-autocomplete--cmdk) | [Part 1 — Core Features](../01-fundamentals.md) | During Part 1, ~10 min |
+| [Exercise 2 — Context & `@` Symbols](#exercise-2--context---symbols) | [Part 2 — Context & Codebase Intelligence](../02-context-and-codebase.md) | After Part 2, ~10 min |
+| [Exercise 3 — Agent Mode & Output Quality](#exercise-3--agent-mode--output-quality) | [Part 3 — Agentic Coding & Agent Mode](../03-agentic-coding.md) | After Part 3, ~15 min |
+| [Exercise 4 — Sub-agents & Parallelism](#exercise-4--sub-agents--parallelism) | [Part 3 — Agentic Coding & Agent Mode](../03-agentic-coding.md) | After Part 3, ~15 min |
+| [Exercise 5 — Prompt Engineering, Skills, Spec-Kit & MCP](#exercise-5--prompt-engineering-skills-spec-kit--mcp) | [Part 4 — Skills, Spec-Kit, Security, MCP & Team Practices](../04-advanced-workflows.md) | After Part 4, ~20 min |
+
 ---
 
 ## Exercise 1 — Tab Autocomplete & `Cmd+K`
-*After Part 1 · ~10 min*
+*During [Part 1 — Core Features](../01-fundamentals.md) · ~10 min · follow along with the presenter*
 
 ### 1a. Next-edit prediction (Tab)
 1. Open `src/lib/types.ts`
@@ -28,45 +38,79 @@ Hands-on exercises to reinforce each section. Each exercise is 5–10 minutes. D
 
 ### 1b. Inline edit with `Cmd+K`
 1. Open `src/lib/latex-generator.ts`
-2. Select the body of `generateExperience()` → `Cmd+K` → `"add an early return that returns '' if every entry is missing both jobTitle and company"`
-3. Review and accept the diff
-4. Now select the responsibility-bullet block → `Cmd+K` → `"extract this into a private helper renderBullets(items: string[], indent: string): string"`
+2. Select the body of `generateEducation()` → `Cmd+K` → `"if degree is empty, fall back to fieldOfStudy as the first line of the subheading"`
+3. Review the diff — does it match the surrounding style? Accept or reject.
+4. Follow-up in the same `Cmd+K` bar: `"also handle the case where both degree and fieldOfStudy are empty — skip the entry entirely"`
+5. Accept, then undo both (`Cmd+Z`) to leave the file clean.
 
 ### 1c. Terminal `Cmd+K`
 1. Click in the terminal panel
-2. `Cmd+K` → `"run only the latex-generator vitest file in watch mode"`
-3. Review the generated `npm run test:watch -- latex-generator` command before running it
+2. `Cmd+K` → `"show the git log for latex-generator.ts — last 5 commits, one line each"`
+3. Review the generated command before running it
+4. Try another: `Cmd+K` → `"count the lines of code in src/lib/ excluding blank lines and comments"`
 
 ---
 
 ## Exercise 2 — Context & `@` Symbols
-*After Part 2 · ~10 min*
+*After [Part 2 — Context & Codebase Intelligence](../02-context-and-codebase.md) · ~10 min*
 
-### 2a. Implicit codebase search
+Reinforces [Part 2 — Context & Codebase Intelligence](../02-context-and-codebase.md): indexing (§2.2), the `@` system (§2.3), and `.cursor/rules` (§2.4).
+
+### 2a. Implicit codebase search (§2.2–2.3)
 1. `Cmd+L` → `"How does the app turn form data into a PDF? Walk me through the pipeline."`
-   (No `@Codebase` needed — the agent searches the codebase index automatically.)
+   (No `@Codebase` symbol — the agent searches the codebase index automatically.)
 2. Note which files Cursor cites. Open them — is the pipeline correct? (Expected: `App.tsx` → `ReviewView.tsx` → `latex-generator.ts` → `pdf-compiler.ts` → `<iframe>`)
+3. If the agent misses `pdf-compiler.ts`, escalate per Part 2 troubleshooting: attach `@src/lib/pdf-compiler.ts` or ask `"search the codebase for browser-side LaTeX compilation"`.
 
-### 2b. Cross-file consistency with `@Files`
-1. `Cmd+L` → `"Look at @src/lib/latex-generator.ts and @src/lib/types.ts. For every entity in types.ts, is there a corresponding generator function? Is every field used? Anything orphaned?"`
-2. If Cursor finds a gap, fix it with a follow-up prompt.
+### 2b. Indexing & ignore files (§2.2)
+1. `Cursor Settings` → `Indexing & Docs` — confirm indexing is complete; note the file count.
+2. Open `.gitignore` → find `public/core/busytex/` (~680 MB of WASM). Why is it excluded from the index even though cv-builder has no `.cursorignore`?
+3. In one sentence, explain the difference between `.gitignore` and `.cursorignore` (from §2.2).
 
-### 2c. `@Docs` research
-1. `Cmd+L` → `"@Docs Vitest — what's the recommended way to assert on multi-line strings with stable indentation? Show me how to apply that to the assertions in @tests/unit/latex-generator.test.ts on generateExperience."`
-2. Compare to the official docs. Optionally apply one improvement.
+### 2c. Explicit `@Files` — pin the contract (§2.3)
+Part 2’s `@Files` pattern: attach the exact files you need — cheaper and more deterministic than implicit search (contrast with **2a**).
 
-### 2d. Explore the `.cursor/rules` files
-The CV Builder ships exactly one rule: `.cursor/rules/specify-rules.mdc`. It's `alwaysApply: true` and points the agent at the current plan.
+1. `Cmd+L` → `"In @src/lib/latex-generator.ts — using generateSummary() as the reference, which section generators return '' when their section is empty? Which one behaves differently?"`
+   (Expected: `generateExperience`, `generateEducation`, `generateSkills`, `generateProjects`, and `generateCertifications` follow the pattern; **`generateContact` always emits a contact block** — even when optional fields are blank.)
+2. Follow up with the spec attached: `"@specs/001-resume-builder/contracts/latex-generation.md @src/lib/latex-generator.ts — does the contract explain why generateContact is the exception? Quote the relevant line."`
+   (Expected: the contract’s document structure lists the contact block as **always present**; optional sections omit output when empty.)
+3. **Do not change any code** — this step is read-only. You’ll implement a new generator in **2e**.
 
-1. Read the rule, then read `specs/001-resume-builder/plan.md`
-2. Open a new Chat → ask Cursor: `"Add a generateLanguages() function for a Languages section."` — without referencing the plan
-3. Watch the agent read `plan.md` automatically (look at the citations). Does its proposed code respect Constitution VI (files < 200 lines), the section ordering, the conditional-empty-string contract?
-4. **Bonus:** add a second rule, `.cursor/rules/testing.mdc`, with `globs: ["tests/**/*.test.ts"]` enforcing "describe per function, it() names start with a verb describing behaviour, top-of-file fixtures only". Re-run the same prompt asking it to also add tests — note the difference.
+### 2d. `@Docs` lookup (§2.3)
+1. `Cmd+L` → `"@Docs Vitest — how do I run tests in watch mode for a single file?"`
+2. Run the command it suggests (expected: `npm run test:watch -- latex-generator` or `npx vitest tests/unit/latex-generator.test.ts`). Leave watch running for **2e**.
+
+
+### 2e. TDD, `@Terminals`, and git context (§2.3)
+1. `git checkout -b workshop/context-demo`
+2. `Cmd+L` → `"@tests/unit/latex-generator.test.ts @src/lib/latex-generator.ts — add describe('generateLanguages') mirroring generateSkills. Use toContain assertions. Do NOT implement generateLanguages yet."`
+3. Watch the terminal — tests should fail (missing export / failing assertions).
+4. `Cmd+L` → `"@src/lib/latex-generator.ts — add generateLanguages(languages: string): string. Match the conditional contract of generateSkills. Do NOT wire it into generateLatex yet."`
+5. Confirm watch reruns and `generateLanguages` tests pass.
+6. Introduce a typo in one test expectation → select the failure in the terminal → `Cmd+L` (or `@Terminals`): `"Fix the test expectation, not the implementation."`
+7. `@Commit (Diff of Working State)` → `"Review these changes. Does generateLanguages match generateSkills? Write a commit message."` → commit.
+8. **Optional:** `@Branch (Diff with Main)` → `"Summarise this branch for a PR description."`
+
+### 2f. Explore `.cursor/rules` (§2.4)
+The CV Builder ships **two** rules in `.cursor/rules/`:
+
+| File | Role |
+|---|---|
+| `specify-rules.mdc` | Always-on pointer to `specs/001-resume-builder/plan.md` — focus here |
+| `speckit-commit-workflow.mdc` | Spec Kit commit format during `/speckit-implement` — covered in Part 4 |
+
+1. Read `specify-rules.mdc`, then skim `plan.md`.
+2. Open a **new** Chat (fresh context) → `"Add a generateReferences(references: string) function for a References section — single free-text field, same conditional-empty pattern as generateSkills."` — without `@`-mentioning or referencing the plan.
+   Review the agent’s response and file reads. Confirm it consulted `plan.md` without you `@`-mentioning it. Reject any code changes — this step is read-only.
+3. Does the proposed approach respect Constitution VI (files < 200 lines), pure functions in `src/lib/`, and Constitution IV (unit tests for generators, no UI tests)?
+4. **Bonus:** add a glob-scoped **third** rule, `.cursor/rules/testing.mdc`, with `globs: ["tests/**/*.test.ts"]` enforcing "describe per function, `it()` names start with a verb describing behaviour, top-of-file fixtures only". Re-run step 2 asking it to also sketch tests — note the difference.
+
+> **Next up:** Exercise 3a wires Languages into the full app (form tab, `generateLatex`, PDF preview) — building on the unwired `generateLanguages` from **2e**.
 
 ---
 
 ## Exercise 3 — Agent Mode & Output Quality
-*After Part 3 · ~15 min*
+*After [Part 3 — Agentic Coding & Agent Mode](../03-agentic-coding.md) · ~15 min*
 
 ### 3a. Add a Languages section with Agent mode
 1. `Cmd+L` → Agent tab
@@ -129,11 +173,15 @@ The CV Builder ships exactly one rule: `.cursor/rules/specify-rules.mdc`. It's `
 ---
 
 ## Exercise 4 — Sub-agents & Parallelism
-*After Part 3 (sub-agents section) · ~15 min*
+*After [Part 3 — Agentic Coding & Agent Mode](../03-agentic-coding.md) (sub-agents section) · ~15 min*
 
 > The #1 requested topic — this is where it all comes together.
 
 ### 4a. Sub-agent delegation: add Languages + Publications in parallel
+
+Sub-agents work in parallel only when their file scopes **don't overlap**. If multiple sub-tasks need to edit the same file (like `types.ts` or `App.tsx`), the agent will serialise them to avoid conflicts.
+
+**Attempt 1 — observe sequential behaviour:**
 1. Reset to a clean tree (`git stash` any work from Exercise 3)
 2. `Cmd+L` → Agent tab → use this prompt:
    ```
@@ -150,9 +198,31 @@ The CV Builder ships exactly one rule: `.cursor/rules/specify-rules.mdc`. It's `
 
    Run npm test at the end.
    ```
-3. Watch Cursor spawn sub-agents and process Languages + Publications concurrently
-4. Review the diffs — did each sub-agent stay within its scope? Did the wiring step run only after both completed?
-5. Open the app and verify both sections show up in the PDF
+3. Observe: the agent likely does this **sequentially** because `types.ts`, `App.tsx`, and the test file are shared across sub-tasks.
+
+**Attempt 2 — true parallel with non-overlapping scopes:**
+4. Reset again (`git checkout .`) and try this restructured prompt where each sub-agent owns all of its own files:
+   ```
+   Add Languages and Publications sections to the CV Builder.
+
+   Process these as TWO INDEPENDENT sub-agents with no shared files:
+
+   Sub-agent 1 (Languages):
+   - Create src/components/LanguagesForm.tsx matching SkillsForm
+   - Create src/lib/generators/languages.ts with generateLanguages() matching generateSkills
+   - Create tests/unit/languages.test.ts with vitest cases
+
+   Sub-agent 2 (Publications):
+   - Create src/components/PublicationsForm.tsx matching ProjectsForm
+   - Create src/lib/generators/publications.ts with generatePublications() matching generateProjects
+   - Create tests/unit/publications.test.ts with vitest cases
+
+   After BOTH complete, wire both into types.ts, App.tsx, and latex-generator.ts yourself.
+   Run npm test at the end.
+   ```
+5. Compare: did the second prompt actually run in parallel? (It should — no file overlaps between sub-agents.)
+
+**Key takeaway:** Sub-agents parallelise when scope boundaries are clean. Shared files force sequential execution. For tasks with inherently shared files, use **Multitask Mode** (exercise 4d) instead.
 
 ### 4b. Worktree parallel work
 1. From the `cv-builder` repo:
@@ -203,10 +273,101 @@ The CV Builder ships exactly one rule: `.cursor/rules/specify-rules.mdc`. It's `
    ```
 3. Compare the experience to 4a where you explicitly defined the sub-tasks. Did the agent make reasonable scoping decisions on its own?
 
+### 4e. Custom sub-agents — create a verifier and a section-builder
+
+Custom sub-agents live in `.cursor/agents/` as markdown files with YAML frontmatter. The agent delegates to them automatically based on their `description`, or you invoke them explicitly with `/name`.
+
+**Step 1: Create a verifier sub-agent**
+
+1. Create the file `.cursor/agents/verifier.md` in the CV Builder repo:
+   ```markdown
+   ---
+   name: verifier
+   description: Validates completed work. Use after implementation tasks to confirm everything actually works.
+   model: inherit
+   readonly: true
+   ---
+
+   You are a skeptical validator for the CV Builder app. Your job is to verify that work
+   claimed as complete actually works.
+
+   When invoked:
+   1. Check that all new files mentioned in the task actually exist
+   2. Run `npm test` and confirm all tests pass
+   3. Check that new generators return '' for empty input (the conditional-section contract)
+   4. Verify new components follow the controlled-input pattern (value + onChange)
+   5. Look for edge cases: whitespace-only input, special characters, missing fields
+
+   Report:
+   - What was verified and passed
+   - What was claimed but incomplete or broken
+   - Specific issues that need to be addressed
+
+   Do not accept claims at face value. Test everything.
+   ```
+
+2. Test it — after any previous exercise that added a section, run:
+   ```
+   /verifier confirm the Languages section handles all edge cases:
+   empty string, whitespace-only, strings with LaTeX special characters (&, %, $)
+   ```
+3. Did it catch anything the original implementation missed?
+
+**Step 2: Create a section-builder sub-agent**
+
+1. Create `.cursor/agents/section-builder.md`:
+   ```markdown
+   ---
+   name: section-builder
+   description: Adds a new section to the CV Builder. Use when asked to add any resume section (Languages, Awards, Volunteering, etc.).
+   model: inherit
+   ---
+
+   You are a specialist for adding new sections to the CV Builder resume app.
+
+   When invoked with a section name and type (single-field or repeatable-list):
+
+   1. Add the interface/field to src/lib/types.ts
+   2. Create the form component in src/components/ matching:
+      - SkillsForm.tsx for single-field sections
+      - ProjectsForm.tsx for repeatable-list sections
+   3. Add the generator function to src/lib/latex-generator.ts matching:
+      - generateSkills() contract for single-field
+      - generateProjects() contract for repeatable-list
+   4. Add vitest cases in tests/unit/latex-generator.test.ts matching the existing style
+   5. Wire into App.tsx (TABS, TAB_LABELS, INITIAL_DATA, TabsContent)
+   6. Run npm test
+
+   Follow all conventions in specs/001-resume-builder/plan.md.
+   Use \section{Name} for the heading. Return '' when empty (conditional-section contract).
+   Escape user input via src/lib/latex-escape.ts.
+   ```
+
+2. Test automatic delegation — start a new chat and type:
+   ```
+   Add a Hobbies section to the resume. It's a single free-text field, like Languages.
+   ```
+   Did the agent delegate to `/section-builder` automatically? (Check the tool calls in the chat output.)
+
+3. Test explicit invocation:
+   ```
+   /section-builder Add a "Volunteering" section — repeatable list with organisation, role, dates, and bullet-point activities.
+   ```
+
+4. Chain them: after the section-builder finishes, invoke the verifier:
+   ```
+   /verifier confirm the Volunteering section is complete and all tests pass
+   ```
+
+**Reflection:**
+- How does a custom sub-agent compare to a Spec-Kit skill (`/speckit-specify → /speckit-implement`)?
+- Sub-agents are lighter (one file, immediate) but less structured (no spec, no plan, no traceability). Skills produce auditable artifacts. Choose based on the task's longevity — throwaway vs. team-maintained.
+- Would you add these sub-agents to `.cursor/agents/` and commit them for the whole team?
+
 ---
 
 ## Exercise 5 — Prompt Engineering, Skills, Spec-Kit & MCP
-*After Part 4 · ~20 min*
+*After [Part 4 — Skills, Spec-Kit, Security, MCP & Team Practices](../04-advanced-workflows.md) · ~20 min*
 
 ### 5a. Prompt quality comparison
 Try both prompts on the CV Builder and compare:

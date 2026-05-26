@@ -15,7 +15,7 @@ Cursor is only as good as the prompts you give it. These patterns consistently p
 | **S**ituation | Current state | "The CV Builder has 7 sections, none for Languages…" |
 | **T**ask | What you want | "…add a Languages section…" |
 | **A**pproach | Constraints / preferences | "…single free-text field, conditional rendering, no new dependencies…" |
-| **R**eference | Files / docs to follow | "…following the pattern in @src/lib/latex-generator.ts::generateSkills and the contracts in @specs/001-resume-builder/spec.md FR-026" |
+| **R**eference | Files / docs to follow | "…following the pattern of generateSkills in @src/lib/latex-generator.ts and the contracts in @specs/001-resume-builder/spec.md FR-026" |
 
 ### Patterns that consistently work
 
@@ -364,7 +364,7 @@ Bug Bot is Cursor's automated code reviewer. When enabled on a repo:
 ```
 node_modules/
 dist/
-public/core/busytex/       # 150 MB of WASM assets — keep out of the index
+public/core/busytex/       # ~680 MB of WASM assets — keep out of the index
 *.pdf
 .env
 .env.*
@@ -497,6 +497,12 @@ Most engineers live at Layers 1–2. Today's goal is comfort at 3–5 and awaren
 - [Spec-Kit](https://github.com/github/spec-kit) · [BMAD Method](https://docs.bmad-method.org)
 - [MCP servers registry](https://github.com/modelcontextprotocol/servers)
 - [texlyre-busytex](https://www.npmjs.com/package/texlyre-busytex) · [shadcn/ui](https://ui.shadcn.com) · [Vitest](https://vitest.dev) (CV Builder stack)
+
+---
+
+### Hands-on
+
+→ [Exercise 5 — Prompt Engineering, Skills, Spec-Kit & MCP](./exercises/README.md#exercise-5--prompt-engineering-skills-spec-kit--mcp) *(after this part, ~20 min)*
 
 ---
 
