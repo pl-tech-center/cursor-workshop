@@ -12,10 +12,10 @@ Cursor is only as good as the prompts you give it. These patterns consistently p
 ### The STAR prompt structure for code tasks
 | Component | Purpose | Example |
 |---|---|---|
-| **S**ituation | Current state | "The CV Builder has 7 sections, none for Languages…" |
+| **S**ituation | Current state | "The CV Builder has no Languages section yet (optional, between Skills and Projects in the PDF)…" |
 | **T**ask | What you want | "…add a Languages section…" |
-| **A**pproach | Constraints / preferences | "…single free-text field, conditional rendering, no new dependencies…" |
-| **R**eference | Files / docs to follow | "…following the pattern in @src/lib/latex-generator.ts::generateSkills and the contracts in @specs/001-resume-builder/spec.md FR-026" |
+| **A**pproach | Constraints / preferences | "…single free-text field, return '' when empty (per FR-026), no new dependencies…" |
+| **R**eference | Files / docs to follow | "…following @src/lib/latex-generator.ts::generateSkills and the contract in @specs/001-resume-builder/contracts/latex-generation.md" |
 
 ### Patterns that consistently work
 
@@ -30,7 +30,7 @@ This prevents Cursor from inventing its own style.
 **Pattern 2: Explicit constraints**
 ```
 "Refactor this function. Constraints:
-- No new npm packages
+- No new packages
 - Must remain backward-compatible (no public API breakage)
 - Keep the file under 200 lines (per Constitution VI in @specs/001-resume-builder/plan.md)
 - Every exported function keeps explicit TypeScript types"
@@ -60,17 +60,45 @@ edge cases, or security concerns I should address before merging?"
 | "Write tests" | "Write vitest tests covering the happy path, invalid input, and the empty-array case" |
 
 ### Demo: iterative prompting (using the CV Builder)
+The lesson is not “vague prompt = bad code.” With a well-structured codebase, a bare prompt can produce **good-looking code** that still skips staging, contract updates, or end-to-end wiring. The demo shows **review → constrain → critique**.
+
+**Step 1 — Vague prompt, then review (don't assume failure)**
+
 ```
-1. Bad prompt: "Add a Languages section" → mediocre result (invents a new shape, wrong file,
-   no test coverage, may add a category structure not in the spec)
-2. STAR prompt: "The CV Builder has no Languages section today.
-   Add generateLanguages() to @src/lib/latex-generator.ts matching the conditional contract
-   used by generateSkills (single string, return '' when empty, same itemize block).
-   Add vitest cases in @tests/unit/latex-generator.test.ts matching the generateSkills describe()
-   block. Do not add a new tab yet — only the generator + tests." → correct result
-3. Follow-up critique: "What edge cases does generateLanguages not handle? Does whitespace-only
-   input go through cleanly?" → catches the trim() gap if missing
+Prompt: "Add a Languages section"
 ```
+
+Run it live, then walk this checklist with attendees — something is usually missing even when tests pass:
+
+| Check | What to look for |
+|---|---|
+| **Shape** | Single `languages: string` like `skills`, not `{ name, level }[]` repeatable entries |
+| **Generator** | `generateLanguages()` in `@src/lib/latex-generator.ts`, same itemize block as `generateSkills`, returns `''` when empty |
+| **Assembly** | Wired into `generateLatex()` between Skills and Projects |
+| **Tests** | `describe('generateLanguages')` in `@tests/unit/latex-generator.test.ts` mirroring `generateSkills` |
+| **Traceability** | `contracts/latex-generation.md` and `spec.md` updated? |
+| **Confusion trap** | Not mixed up with the **"Languages:"** category line inside **Technical Skills** in `resume.tex` |
+
+**Step 2 — STAR prompt (scoped: generator + tests only)**
+
+```
+The CV Builder has no Languages section today.
+Add generateLanguages() to @src/lib/latex-generator.ts matching the conditional contract
+used by generateSkills (single string, return '' when empty, same itemize block).
+Add vitest cases in @tests/unit/latex-generator.test.ts matching the generateSkills describe()
+block. Do not add a new tab yet — only the generator + tests.
+```
+
+→ correct, reviewable first PR: one file pair, explicit contract, tests that run with `npm test`.
+
+**Step 3 — Critique before expanding scope**
+
+```
+The generator and tests look fine in isolation. Would Languages appear in the PDF with only
+these changes? What's still missing for FR-026 to hold end-to-end?
+```
+
+→ surfaces missing `generateLatex()` wiring, then `ResumeData` / `LanguagesForm` / tab — deliberately left out of step 2. Spec-Kit (§4.2) is the systematic version of this same staged flow.
 
 ---
 
