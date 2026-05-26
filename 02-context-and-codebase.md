@@ -32,8 +32,10 @@ Cursor indexes your codebase to enable semantic search. Since `@Codebase` no lon
 
 ### What gets indexed
 - All text files tracked by git (source code, markdown, config files)
-- Respects `.gitignore` and `.cursorignore`
+- Respects `.gitignore`, `.cursorignore`, and `.cursorindexingignore` (see below)
 - Binary files, images, and compiled output are excluded automatically
+
+> **`.gitignore` vs `.cursorignore`:** Per [Cursor docs](https://cursor.com/docs/reference/ignore-file), `.gitignore` patterns apply to **indexing** by default. `.cursorignore` is the stricter block — it also excludes files from Agent, Tab, and `@`-mention access. cv-builder does not ship a `.cursorignore` yet; it relies on `.gitignore` for `public/core/busytex/` and `.env*`. For secrets, add `.cursorignore` or use the global ignore list in Settings (see Part 4 §4.5).
 
 ### What affects search quality
 
@@ -46,20 +48,24 @@ Cursor indexes your codebase to enable semantic search. Since `@Codebase` no lon
 
 ### `.cursorignore`
 
-Excludes files from both the index **and** from being read by the agent. Use it for build artifacts, large bundled assets, secrets, and noise.
+Excludes files from the index **and** from being read by Agent, Tab, and `@`-mentions. Use it for build artifacts, large bundled assets, secrets, and noise.
+
+Recommended for cv-builder (not committed yet — add as a team exercise or follow-up):
 
 ```
 # Example .cursorignore
 node_modules/
 dist/
 .vite/
-public/core/busytex/       # ~150 MB of WASM assets — keep out of the index
+public/core/busytex/       # ~650 MB of WASM assets — keep out of AI context
 *.pdf
 .env
 .env.*
 !.env.example
 secrets/
 ```
+
+For indexing-only exclusion (file still readable via `@file` on demand), use `.cursorindexingignore` instead.
 
 ### Large repo strategies
 - **Monorepos:** Only open workspace folders get indexed. Either open just the package(s) you need, or open the monorepo root and use `.cursorignore` to exclude packages you aren't working on
@@ -82,7 +88,7 @@ If the agent misses relevant code during a session:
       ResumeData → generateLatex() in src/lib/latex-generator.ts
                  → compilePdf() in src/lib/pdf-compiler.ts (texlyre-busytex Worker)
                  → Blob URL → <iframe> in src/components/ReviewView.tsx
-3. Show .cursorignore — note that public/core/busytex/ (150 MB of WASM) is excluded
+3. Show .gitignore — note that public/core/busytex/ (~650 MB of WASM) is excluded from indexing; mention that `.cursorignore` would also block Agent access (Part 4 §4.5)
 4. Ask: "What WASM functions does pdf-compiler.ts call?"
    → Agent finds the right file even without @Files, because the index has good embeddings for it
 ```
@@ -275,9 +281,9 @@ Rules files use `.mdc` format (Markdown with optional frontmatter).
 | **Agent-requested** | AI decides when to use | Add description in frontmatter |
 | **Manual** | Only when you `@` them | Good for one-off templates |
 
-### The CV Builder's actual rule — `specify-rules.mdc`
+### The CV Builder's actual rules
 
-The CV Builder ships with exactly one rule, and it's a great pattern worth copying:
+The CV Builder's primary always-on rule is `specify-rules.mdc` — a pattern worth copying on any Spec-Kit project:
 
 ```markdown
 ---
@@ -287,13 +293,22 @@ alwaysApply: true
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/001-resume-builder/plan.md
+at specs/008-github-mcp-integration/plan.md
 <!-- SPECKIT END -->
 ```
 
-This is a 4-line, always-on rule that points the agent at the **active spec plan**. The plan is the source of truth for stack decisions (R-001 R-005), constitution gates, and file layout — so every chat in the project sees that context without any `@` reference.
+This is a 4-line, always-on rule that points the agent at the **active feature plan**. The path between `<!-- SPECKIT START -->` and `<!-- SPECKIT END -->` is **not static** — `/speckit-plan` rewrites it to the plan file it just created (e.g. after a Languages demo, it would point at `specs/002-languages-section/plan.md`). The checked-in value reflects whichever feature was planned most recently; on a fresh clone today that is `008-github-mcp-integration`.
 
-Per-project rules don't have to be long. One always-on pointer + a couple of glob-scoped rules is usually enough.
+The plan is the source of truth for stack decisions, constitution gates, and file layout — so every chat in the project sees that context without any `@` reference.
+
+Two other rules ship in `.cursor/rules/` (not always-on):
+
+| Rule | When it applies |
+|---|---|
+| `github-mcp-agent.mdc` | GitHub MCP writes — confirmation gates, repo targeting (Part 4 §4.4) |
+| `speckit-commit-workflow.mdc` | Spec Kit `[T{id}]` task commits during `/speckit-implement` |
+
+Per-project rules don't have to be long. One always-on pointer + a couple of scoped or on-demand rules is usually enough.
 
 ### Example additions you might layer on top
 
@@ -335,10 +350,10 @@ globs: ["tests/**/*.test.ts"]
 
 ### Demo (using the CV Builder app)
 ```
-1. Show .cursor/rules/specify-rules.mdc — 4 lines, alwaysApply: true, points at the plan
+1. Show .cursor/rules/specify-rules.mdc — 4 lines, alwaysApply: true, points at the active plan (currently specs/008-github-mcp-integration/plan.md)
 2. Cmd+L → "Add a generator for a Languages section" — note that Cursor reads plan.md before suggesting code (it knows about Constitution VI, the section ordering rule, the file layout)
 3. Open a fresh project without rules → same prompt → suggestions wander away from the project's conventions
-4. Show that rules are committed to git → new team members get them automatically (and the spec-kit skills too)
+4. Show that rules and skills are committed to git → new team members get them automatically (16 skills: 14 speckit-* + create-issue + overview)
 ```
 
 ### Context window impact
@@ -373,7 +388,8 @@ Rules consume context on every request. This is the trade-off: more rules = more
 
 ### Common mistakes
 - Asking vague questions without `@` references
-- Not setting up `.cursorignore` → slow indexing on huge repos
+- Relying on `.gitignore` alone for secrets — add `.cursorignore` (or global ignore) so Agent and Tab cannot read them
+- Not setting up ignore rules → slow indexing on huge repos (cv-builder: `public/core/busytex/` is ~650 MB)
 - Forgetting to commit `.cursor/rules` → team doesn't benefit
 - Writing rules that are too vague ("write good code") — be specific and concrete
 
