@@ -97,7 +97,7 @@ The `@` symbol is the primary way to **explicitly pull context** into chat or Ag
 Reference specific files or entire directories. This is your **most-used** context tool — the explicit, precise alternative to hoping the agent finds what it needs.
 
 ```
-"Refactor @src/lib/latex-generator.ts so that every section generator follows the same conditional-empty-string contract used by @src/lib/latex-generator.ts::generateSummary"
+"Refactor @src/lib/latex-generator.ts so that every section generator follows the same conditional-empty-string contract used by generateSummary"
 ```
 
 ```
@@ -376,6 +376,10 @@ Rules consume context on every request. This is the trade-off: more rules = more
 - Not setting up `.cursorignore` → slow indexing on huge repos
 - Forgetting to commit `.cursor/rules` → team doesn't benefit
 - Writing rules that are too vague ("write good code") — be specific and concrete
+
+### Hands-on
+
+→ [Exercise 2 — Context & `@` Symbols](./exercises/README.md#exercise-2--context---symbols) *(after this part, ~10 min)*
 
 ---
 
