@@ -131,11 +131,14 @@ The CV Builder ships **two** rules in `.cursor/rules/`:
 3. Review every file in the diff. Accept.
 4. Open `http://localhost:5173`, type something in Languages, click Review, confirm it appears in the PDF.
 
-### 3b. Tame a hallucination
-1. Agent tab → `"Add generateAwards() that uses the \\resumeAwardHeading custom command from resume.tex"` — this command doesn't exist
-2. Verify: `"@Files @resume.tex — list every \\newcommand. Does \\resumeAwardHeading exist?"`
+### 3b. Tame a hallucination (optional — outcomes vary)
+
+> **Note:** With codebase indexing, Agent may read `resume.tex` first and *not* invent `\resumeAwardHeading`. That's a success — the lesson is **verify**, not "force a failure." Compare your outcome to your neighbour's.
+
+1. Agent tab → `"Add generateAwards() that uses the \\resumeAwardHeading custom command from resume.tex"` — this command does not exist in `resume.tex`
+2. **Before accepting the diff:** Ask mode → `"@Files @resume.tex — list every \\newcommand. Does \\resumeAwardHeading exist?"`
 3. Re-run with constraints: `"Add generateAwards() that REUSES \\resumeProjectHeading the same way generateCertifications() does in @src/lib/latex-generator.ts. Do not invent new custom commands."`
-4. Compare both versions — what made the difference?
+4. **Reflection:** Did step 1 invent, self-correct, or refuse? What made step 3 better — the `@Files` check or the explicit reuse constraint?
 
 ### 3c. Debug with Agent mode
 1. Break something on purpose in `src/lib/latex-escape.ts` — e.g., comment out the `.replace(/%/g, '\\%')` line
