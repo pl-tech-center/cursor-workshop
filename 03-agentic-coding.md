@@ -165,21 +165,34 @@ It stops being true when:
 - The task spans multiple files and would take 30+ minutes by hand
 - You use Plan mode to catch mistakes before code is written
 
-### Demo (using the CV Builder app)
+### Demo: Verify before trusting (live, ~5 min)
+
+**Do not script a hallucination live.** With codebase indexing, Agent often reads `@resume.tex` first and either reuses `\resumeProjectHeading`, refuses the fake `\resumeAwardHeading`, or asks you to clarify — so the “watch it invent a LaTeX command” moment is unreliable on stage.
+
+**What works every time:** run the three-step loop from above on a real task.
+
 ```
-1. Ask Agent: "Add a generateAwards() section using the \\resumeAwardHeading custom command
-   from the resume template"
-   → watch it confidently emit \\resumeAwardHeading{Name}{Issuer}{Year} — a command that DOES NOT
-   exist in resume.tex (the template only defines \\resumeSubheading, \\resumeProjectHeading,
-   \\resumeItem, \\resumeSubHeadingListStart, \\resumeItemListStart, etc.)
-2. Verify: "@Files @resume.tex — list every \\newcommand and \\renewcommand defined here.
-   Does \\resumeAwardHeading exist?"
-3. Re-run with constraints: "Add generateAwards() that REUSES \\resumeProjectHeading exactly
-   the way generateCertifications() does in @src/lib/latex-generator.ts. Do not invent new
-   custom commands." → correct output
-4. Self-critique: "Re-read generateAwards() against @specs/001-resume-builder/spec.md FR-023 —
-   does it match the 'reuse \\resumeProjectHeading for visual consistency' convention?"
+1. Agent — Step 1 (constrain):
+   Use the generateLanguages() prompt from Step 1 above (or Exercise 3a).
+   Review the diff before accepting.
+
+2. Agent — Step 2 (self-critique):
+   Use the generateLanguages() review prompt from Step 2 above.
+   Typical catch: whitespace-only input, missing FR-026 empty-string contract, style drift.
+
+3. Agent — Step 3 (tests):
+   Use the vitest + npm test prompt from Step 3 above.
 ```
+
+**Hallucinations — talk track only (30 sec):** walk through the red flags list. Example: `\resumeAwardHeading` is not defined in `resume.tex` (only `\resumeSubheading`, `\resumeProjectHeading`, etc.) — agents *used* to invent it; now verification matters more than provocation.
+
+**Optional 10-second Ask check (reliable):**
+```
+Ask mode → "@Files @resume.tex — list every \\newcommand. Does \\resumeAwardHeading exist?"
+```
+Always returns no — shows verification without depending on Agent writing bad code.
+
+**Hands-on:** [Exercise 3b](./exercises/README.md#3b-tame-a-hallucination) — attendees try the awards prompt themselves and compare outcomes (invented command vs self-correction vs constrained re-run).
 
 ---
 
@@ -371,6 +384,8 @@ Cursor includes three built-in sub-agents that fire automatically — you don't 
 | **Bash** | Runs series of shell commands | Command output is verbose. Isolating it keeps the parent focused on decisions, not logs. |
 | **Browser** | Controls browser via MCP tools | DOM snapshots and screenshots are noisy. The sub-agent filters down to relevant results. |
 
+These were designed based on analysis of agent conversations where context window limits were hit. The explore sub-agent uses a faster model by default, enabling 10 parallel searches in the time a single main-agent search would take. Since Cursor 2.5, sub-agents can launch child sub-agents to create a tree of coordinated work.
+
 You'll see these in action any time the agent decides to search the codebase, run a command, or interact with a browser — it's spawning a sub-agent under the hood.
 
 ### Foreground vs. background sub-agents
@@ -404,7 +419,14 @@ Best practice: give each sub-task a **clean scope boundary** so sub-agents don't
 
 ### Custom sub-agents — `.cursor/agents/`
 
-This is the power feature. You can define **reusable, project-specific sub-agents** as markdown files:
+This is the power feature. You can define **reusable, project-specific sub-agents** as markdown files.
+
+**File locations:**
+- **Project-level:** `.cursor/agents/` (committed to git — team-shared)
+- **User-level:** `~/.cursor/agents/` (personal, across all projects)
+- For compatibility, `.claude/agents/` and `.codex/agents/` are also supported. `.cursor/` takes precedence on name conflict.
+
+The agent includes all custom sub-agents in its available tools — they appear alongside built-in ones.
 
 ```
 .cursor/agents/
@@ -439,13 +461,13 @@ Be thorough and skeptical. Report:
 
 ### Configuration fields
 
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `name` | string | From filename | Display name. Use lowercase + hyphens. |
-| `description` | string | — | Controls when the agent delegates automatically. Invest time here. |
-| `model` | string | `inherit` | `inherit` (same as parent) or a specific model ID |
-| `readonly` | boolean | `false` | If true, no file edits or state-changing shell commands |
-| `is_background` | boolean | `false` | If true, runs without blocking the parent |
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `name` | string | No | From filename | Display name. Use lowercase + hyphens. |
+| `description` | string | Yes | — | Controls when the agent delegates automatically. Invest time here. |
+| `model` | string | No | `inherit` | `inherit` (same as parent) or a specific model ID |
+| `readonly` | boolean | No | `false` | If true, no file edits or state-changing shell commands |
+| `is_background` | boolean | No | `false` | If true, runs without blocking the parent |
 
 ### Invocation patterns
 
@@ -508,9 +530,22 @@ readonly: true
 - **Sub-agents for simple tasks** — If the task completes in one shot and doesn't need context isolation, just let the agent do it directly or use a skill.
 - **Overlapping scopes** — Two sub-agents editing the same file = conflicts.
 
-### Multitask Mode — the agent as coordinator
+**Best practice:** Start with 2–3 focused sub-agents. Add more only when you have clear, distinct use cases.
+
+### When to use sub-agents vs. skills
+
+| Use sub-agents when… | Use skills when… |
+|---|---|
+| You need context isolation for long research tasks | The task is single-purpose |
+| Running multiple workstreams in parallel | You want a quick, repeatable action |
+| The task requires specialized expertise across many steps | The task completes in one shot |
+| You want an independent verification of work | You don't need a separate context window |
+
+### Multitask Mode & `/multitask` — the agent as coordinator
 
 Multitask Mode takes sub-agents further: the agent acts as a **coordinator**, proactively scoping work and delegating to multiple background workers in parallel. Instead of you spelling out the sub-tasks, the agent decomposes the request, spins up async workers, monitors progress, and synthesises results.
+
+Use the **`/multitask`** slash command to enter Multitask Mode explicitly. Available in the Agents Window since Cursor 3.2 (April 24, 2026). If you already have queued messages, you can ask Cursor to multitask on them instead of waiting for the current run to finish.
 
 ```
 You: "Implement these three features and update all affected tests."
@@ -573,11 +608,31 @@ Then: `/verifier confirm both sections render in the PDF and all tests pass`
 
 Git worktrees let you check out **multiple branches simultaneously** in separate directories. Combined with multiple Cursor windows, this means multiple agents working in parallel without interfering with each other.
 
-```bash
-# Create a worktree for a parallel workstream
-git worktree add ../cv-builder-compact-mode feature/compact-mode
+#### `/worktree` — the recommended path in Cursor 3
 
-# Open the worktree in a new Cursor window
+The **`/worktree`** slash command starts an isolated Git checkout for the rest of a chat. Your main branch stays untouched until you explicitly bring changes back with **`/apply-worktree`**.
+
+```
+Cmd+L → Agent tab →
+"/worktree — add a Compact-mode toggle in ReviewView that tightens margins
+in latex-preamble.ts for single-page output"
+```
+
+When you're happy with the result:
+```
+/apply-worktree
+```
+
+Customise worktree setup (install deps, copy `.env`, run migrations) via **`.cursor/worktrees.json`** in your project root.
+
+> **UI-native worktrees** are only available in the Agents Window. In the Editor Window, use the `/worktree` and `/best-of-n` commands.
+
+#### Manual `git worktree` (still works)
+
+The manual approach still works and gives you full control:
+
+```bash
+git worktree add ../cv-builder-compact-mode feature/compact-mode
 cursor ../cv-builder-compact-mode
 ```
 
@@ -602,7 +657,7 @@ Both run simultaneously. Neither touches the other's files.
 The pattern:
 ```
 1. Break the feature into 3-4 independent pieces
-2. Create a worktree per piece: git worktree add ../cv-builder-piece-N feature/cv-piece-N
+2. /worktree per piece (or git worktree add ../cv-builder-piece-N feature/cv-piece-N)
 3. Run an agent in each worktree with a focused scope
 4. Each piece → one PR → fast review → merge
 ```
@@ -615,16 +670,22 @@ This produces 3-4 PRs of 200-500 lines each instead of one monster PR.
 
 Sub-agents + worktrees parallelise **different** sub-tasks. **Best-of-N** parallelises **the same** task across N attempts — usually with different models or different prompt framings — and lets you pick the best result.
 
+#### `/best-of-n` syntax
+
 ```
-                            ┌── attempt 1 (Composer 2.5) ──► ../cv-builder-bon-1
-prompt: "refactor X" ──────►├── attempt 2 (Sonnet)       ──► ../cv-builder-bon-2
-                            └── attempt 3 (Gemini)       ──► ../cv-builder-bon-3
-                                                            │
-                                                            ▼
-                                                  pick best · cherry-pick · discard rest
+/best-of-n sonnet,gpt,composer <task>
 ```
 
-Under the hood each attempt runs in its own isolated git worktree (Cursor exposes this as the `best-of-n-runner` sub-agent type), so the attempts can't step on each other. You review them like you review three colleagues' PRs and merge the strongest one.
+Each run gets its own worktree. A parent agent provides commentary on the different results. Best-of-N does **not** merge changes back automatically — you pick a winner, then run `/apply-worktree` to bring the changes back. Supports multi-repo setups.
+
+```
+                            ┌── attempt 1 (Composer 2.5) ──► worktree-bon-1
+/best-of-n sonnet,gpt, ────►├── attempt 2 (Sonnet)       ──► worktree-bon-2
+composer "refactor X"       └── attempt 3 (GPT)          ──► worktree-bon-3
+                                                            │
+                                                            ▼
+                                                  pick best · /apply-worktree · discard rest
+```
 
 **When Best-of-N is worth the spend:**
 
@@ -640,18 +701,16 @@ Under the hood each attempt runs in its own isolated git worktree (Cursor expose
 
 ```
 Cmd+L → Agent tab →
-"Best-of-3: refactor @src/lib/latex-generator.ts so the section ordering and
-the empty-filter logic live in one place. Constraints: keep the public
-generateLatex(data) signature; no new dependencies; existing tests must pass.
-
-Run three attempts in isolated worktrees. Use a different model for each
-(Composer 2.5, Sonnet, Gemini). Don't merge — show me each diff so I can pick."
+"/best-of-n sonnet,gpt,composer refactor @src/lib/latex-generator.ts so the
+section ordering and the empty-filter logic live in one place. Constraints:
+keep the public generateLatex(data) signature; no new dependencies;
+existing tests must pass."
 ```
 
 ```
-"Best-of-2: write @tests/unit/latex-escape.test.ts so that every escape rule
-listed in @specs/001-resume-builder/contracts/latex-generation.md is asserted.
-Run two attempts — one minimal, one exhaustive. I'll choose."
+"/best-of-n sonnet,composer write @tests/unit/latex-escape.test.ts so that
+every escape rule listed in @specs/001-resume-builder/contracts/latex-generation.md
+is asserted. One minimal, one exhaustive. I'll choose."
 ```
 
 **Reviewing the attempts — heuristics that beat "I'll just pick the longest one":**
@@ -668,14 +727,25 @@ Run two attempts — one minimal, one exhaustive. I'll choose."
 
 ---
 
-### Cloud / Background agents
+### Cloud Agents (formerly Background Agents)
 
-Cursor's **Background Agent** runs tasks in a sandboxed cloud environment — not on your machine. You kick off a task and can close your laptop; the agent continues running and notifies you when done.
+> **Presenter note:** Cloud Agents are **not available on every machine** — many Nike laptops, privacy-mode settings, plan tiers, or org policies hide the Cloud toggle entirely. **Do not demo this live** unless you have confirmed the Cloud option appears in your Agent chat. Teach the concept in 60 seconds; use the local alternatives below for the workshop.
 
-**How to start a background agent task:**
+Cursor's **Cloud Agents** run tasks in isolated Ubuntu VMs in the cloud (AWS), each in its own Docker container — not on your machine. You kick off a task and can close your laptop; the agent continues running and notifies you when done.
+
+**When you don't have Cloud Agents**, the same *idea* still works locally:
+- **`/worktree` + local Agent** — long task in an isolated checkout while you keep coding in main
+- **`/multitask`** — parallel local sub-agents on independent scopes
+- **Queued Agent messages** — submit the next task while the current one runs
+
+**Access from (when enabled):** The Agents Window (`Cmd+Shift+P` → Open Agents Window), cursor.com/agents, Slack, Linear, GitHub, and your phone.
+
+**How to start a cloud agent task (if the Cloud toggle is visible):**
 ```
-Cmd+L → Agent tab → click the "Background" toggle → describe the task → Submit
+Cmd+L → Agent tab → click the "Cloud" toggle → describe the task → Submit
 ```
+
+If you only see **Local** (and maybe **Worktree**), you are on local Agent only — that is normal for this workshop environment.
 
 **Best suited for:**
 - Tasks that take 15+ minutes (large refactors, bulk migrations)
@@ -683,48 +753,66 @@ Cmd+L → Agent tab → click the "Background" toggle → describe the task → 
 - Running a full test suite in a clean environment
 - Generating comprehensive test coverage across a module
 
-**What background agents can do:**
+**What cloud agents can do:**
 - Read/write files, run tests, install packages
-- Commit changes to a branch and open a PR
+- Create branches and open PRs
+- Work in multi-repo environments
+- Use MCP servers via committed `.cursor/mcp.json`
+
+**Configuration via `.cursor/environment.json`:**
+
+Cloud agents run in configurable environments. Define initialization commands, start scripts, persistent terminals, and environment variables in `.cursor/environment.json`:
+- **Initialization commands** — install dependencies, run migrations, set up the environment
+- **Start scripts** — launch dev servers or watchers that persist for the session
+- **Persistent terminals** — terminals that stay alive across agent interactions
+- **Environment variables** — inject config without committing secrets
+
+**Secret management:** Manage secrets via Cursor's dashboard — encrypted-at-rest with KMS. Secrets are injected into the cloud environment at runtime.
 
 **Development environments for cloud agents:**
 
-Background agents run in configurable cloud environments. You can define:
-- **Dockerfile-based config** — specify the exact runtime (Node version, system dependencies, build tools) so the agent's environment matches your local/CI setup
 - **Multi-repo environments** — attach multiple repos so the agent can reason across service boundaries (e.g., frontend + backend + shared types)
 - **Environment governance** — admins can lock down allowed base images, restrict network access, and enforce security policies for all cloud agent runs in the org
 
-This solves the "works on my machine" problem for background agents — they run in the same environment your CI does.
+This solves the "works on my machine" problem for cloud agents — they run in the same environment your CI does.
+
+**Local-to-cloud handoff:** Start a task locally, hand it to the cloud when scope grows; pull the cloud result back to local for cleanup and final review.
 
 **What they cannot do (yet):**
-- Access resources not in the repo (no internal DB, no local secrets)
+- Access resources not in the repo (no internal DB, no local secrets beyond dashboard-managed ones)
 - Interact with a running local server
 
-### Orchestration pattern: worktree + background agent
+### Orchestration pattern: worktree + long-running Agent (local or cloud)
+
+Same workflow with **local Agent in a worktree** when Cloud is unavailable:
+
 ```
-1. git worktree add ../cv-builder-tests feature/test-coverage
-2. Open worktree in Cursor → Agent tab → Background agent:
+1. /worktree (or: git worktree add ../cv-builder-tests feature/test-coverage)
+2. In the worktree chat — local Agent:
    "Audit @src/lib/ — for every exported function without a corresponding test in @tests/unit/,
     add vitest cases.
     Follow the style in @tests/unit/latex-generator.test.ts (describe per function, it() with
     behaviour-shaped names, top-of-file fixtures).
     Run npm test until everything passes.
-    Commit and open a PR."
-3. Continue working on the new section in your main window while it runs
+    Commit when green."
+3. Continue working in your main window while the worktree Agent runs
 ```
+
+**With Cloud Agents (optional):** same prompt in a Cloud session — the laptop can sleep; you review the PR when notified.
 
 ### Demo: the full parallelism stack (10 min)
 ```
-1. Show git worktree setup — two Cursor windows on the CV Builder
+1. Show /worktree — start an isolated checkout for a compact-mode feature
 2. Window 1 (main): Agent adding Languages + Publications sections via sub-agents
-3. Window 2 (feature/compact-mode): Agent adding a Compact-mode toggle in ReviewView that
+3. Worktree chat: Agent adding a Compact-mode toggle in ReviewView that
    tightens margins in latex-preamble.ts
 4. Show sub-agents spawning in Window 1 (Languages + Publications in parallel)
-5. Best-of-N moment: kick off Best-of-3 on the Compact-mode refactor with three different
-   models, walk through the three diffs side-by-side, pick the winner
-6. Show Background Agent toggle: kick off the test-coverage audit
-7. Show how to review diffs and merge the results
-8. Clean up: git worktree remove ../cv-builder-compact-mode ../cv-builder-bon-*
+5. Best-of-N moment: /best-of-n sonnet,gpt,composer on the Compact-mode refactor,
+   walk through the three diffs side-by-side, pick the winner with /apply-worktree
+6. (Skip if no Cloud toggle) Long-running test audit: local Agent in the worktree from step 3,
+   OR Cloud Agent if your machine has it — same prompt as the orchestration pattern above
+7. Show how to review diffs and merge the results (/apply-worktree or PR)
+8. Clean up worktrees (automatic for /worktree; manual: git worktree remove <path>)
 ```
 
 ---
@@ -737,15 +825,15 @@ This solves the "works on my machine" problem for background agents — they run
 3. **AI Debug mode** = give it the symptom, not the hypothesis
 4. **Built-in sub-agents** (explore, bash, browser) fire automatically — you don't configure them
 5. **Custom sub-agents** (`.cursor/agents/`) = reusable specialists committed alongside code — verifier, security auditor, test runner
-6. **Multitask Mode** = the agent as coordinator — it scopes, delegates, and synthesises across background workers
-7. **Worktrees** = true parallel agent workstreams across branches (and smaller PRs)
-8. **Best-of-N** = run **the same** task N times across models, pick the strongest diff — also the cheapest way to learn which model your codebase actually prefers
-9. **Background agents** = long-running tasks that continue without you; use development environments (Dockerfile config, multi-repo) for production-grade setups
+6. **Multitask Mode** (`/multitask`) = the agent as coordinator — it scopes, delegates, and synthesises across background workers
+7. **Worktrees** (`/worktree`, `/apply-worktree`) = true parallel agent workstreams across branches (and smaller PRs)
+8. **Best-of-N** (`/best-of-n`) = run **the same** task N times across models, pick the strongest diff — also the cheapest way to learn which model your codebase actually prefers
+9. **Cloud Agents** (when enabled) = long-running tasks that continue without you; otherwise use **worktree + local Agent** or **queued messages** for the same parallelism
 
 ### Common mistakes
 - Giving overlapping file scopes to parallel agents — they will conflict
 - Creating too many generic sub-agents with vague descriptions — start with 2-3 focused ones
-- Using background agents for tasks that require local secrets or running services
+- Using cloud agents for tasks that require local secrets or running services
 - Not committing before any agent task — you need a clean diff to review
 - Running agent mode with a vague prompt — the more specific, the less rework
 - Accepting agent output without reading the diff — "plausible but wrong" is the biggest risk

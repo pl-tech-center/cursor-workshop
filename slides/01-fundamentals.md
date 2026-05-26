@@ -25,30 +25,30 @@ style: |
 
 ---
 
-# 1.1 — Tab Autocomplete
+# 1.1. Tab Autocomplete
 
 ![w:620 center](tab-autocomplete-flow.png)
 
 ---
 
-# 1.1 — What Affects Completion Quality
+# 1.1. What Affects Completion Quality
 
-- **Open tabs** — files in other tabs are in context
-- **Recent edits** — recently changed code weighs more
-- **Codebase index** — semantic patterns from the whole repo
-- **File size** — very large files get truncated
-- **Partial accept** — `Cmd+→` to accept one word at a time
+- **Open tabs**. Files in other tabs are in context
+- **Recent edits**. Recently changed code weighs more
+- **Codebase index**. Semantic patterns from the whole repo
+- **File size**. Very large files get truncated
+- **Partial accept**. `Cmd+→` to accept one word at a time
 
 ---
 
-# 1.1 — Exercise 1a
+# 1.1. Exercise 1a
 
 **Add `employmentType` to `ExperienceEntry` in `types.ts`**
 **→ Tab through every ghost edit**
 
 ---
 
-# 1.2 — `Cmd+K`
+# 1.2. `Cmd+K`
 
 ```
 Select → Cmd+K → prompt → diff → accept/reject → follow-up
@@ -58,7 +58,7 @@ Select → Cmd+K → prompt → diff → accept/reject → follow-up
 
 ---
 
-# 1.2 — `Cmd+K` in the Terminal
+# 1.2. `Cmd+K` in the Terminal
 
 ```
 Cmd+K in terminal → describe the command → approve → run
@@ -66,16 +66,16 @@ Cmd+K in terminal → describe the command → approve → run
 
 ---
 
-# 1.2 — Exercise 1b + 1c
+# 1.2. Exercise 1b + 1c
 
-**`Cmd+K` on `generateEducation()` — add fallback, then follow up**
-**`Cmd+K` in terminal — generate a git log command**
+**`Cmd+K` on `generateEducation()` add fallback, then follow up**
+**`Cmd+K` in terminal generate a git log command**
 
 ---
 
-# 1.3 — Chat Modes
+# 1.3. Chat Modes
 
-`Shift+Tab` to cycle · each mode gets its own context window
+`Shift+Tab` to cycle each mode gets its own context window
 
 ---
 
@@ -102,7 +102,7 @@ Read-only. Understands code without changing it.
 "Explain the relationship between these two modules"
 ```
 
-- Token-efficient — uses the index, not broad file reads
+- Token-efficient uses the index, not broad file reads
 - **Plan with Ask, implement with Agent**
 
 ---
@@ -143,14 +143,14 @@ Runtime evidence instead of guessing at fixes.
 
 Parallel async sub-agents from one session.
 
-- **Queue parallelisation** — stacked prompts run concurrently
-- **Auto-decomposition** — one large request split into chunks
+- **Queue parallelisation**. Stacked prompts run concurrently
+- **Auto-decomposition**. One large request split into chunks
 - Each sub-agent has its own context window
 - Combine with `/worktree` when sub-agents edit overlapping files
 
 ---
 
-# 1.3 — The Decision Tree
+# 1.3. The Decision Tree
 
 ```
 Small, one-file edit?             → Cmd+K
@@ -162,9 +162,9 @@ Independent parallel tasks?       → Multitask
 
 ---
 
-# 1.3 — Model Selection
+# 1.3. Model Selection
 
-`Cmd+/` to cycle · model picker dropdown · persists across conversations
+`Cmd+/` to cycle model picker dropdown persists across conversations
 
 | Routing | What it does |
 |---------|-------------|
@@ -174,11 +174,11 @@ Independent parallel tasks?       → Multitask
 
 ---
 
-# 1.3 — Key Models
+# 1.3. Key Models
 
 | Model | Best for |
 |-------|---------|
-| **Composer 2.5** | Fast iteration — the Auto default |
+| **Composer 2.5** | Fast iteration the Auto default |
 | **Claude Opus 4.7** | Complex architecture, security review |
 | **Claude Sonnet 4.6** | Budget-conscious daily work |
 | **GPT-5.5** | Alternative perspective, strong agentic coding |
@@ -189,17 +189,17 @@ Independent parallel tasks?       → Multitask
 
 ---
 
-# Part 1 — Takeaways
+# Part 1. Takeaways
 
-1. **Tab** — next-edit prediction; `Cmd+→` for partial accept
-2. **`Cmd+K`** — iterate with follow-ups; works in the terminal
-3. **Modes** — Ask → Plan → Agent → Multitask is a ladder
-4. **Models** — explore cheap, commit expensive
+1. **Tab**. Next-edit prediction; `Cmd+→` for partial accept
+2. **`Cmd+K`**. Iterate with follow-ups; works in the terminal
+3. **Modes**. Ask → Plan → Agent → Multitask is a ladder
+4. **Models**. Explore cheap, commit expensive
 
 ---
 
 <!-- _class: title -->
 
-# ☕ Break — 5 min
+# ☕ Break  5 min
 
 ## Part 2 → Context & Codebase Intelligence

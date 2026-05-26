@@ -98,7 +98,7 @@ cv-builder/                          (separate repo — cloned alongside this on
 - **Sub-agents** — parallel task delegation with isolated context windows
 - **Multitask Mode** — the agent as coordinator, delegating to background workers
 - **Git worktrees + Best-of-N** — multiple agents on multiple branches
-- **Cloud / Background agents** — long-running tasks that run without you; development environments (Dockerfile-based config, multi-repo, governance)
+- **Cloud / Background agents** (optional — not on all laptops) — concept + local fallback (`/worktree` + Agent, `/multitask`); cloud when your org enables it
 
 ### Presenter B — Context Intelligence, Spec-Kit & Advanced Workflows
 - The `@` context system (files, folders, docs, web, git)

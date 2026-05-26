@@ -35,11 +35,11 @@ style: |
 | 2 | Context & Codebase Intelligence | 35 min |
 | 3 | Agentic Coding, Sub-agents & Parallelism | 45 min |
 | 4 | Skills, Spec-Kit, Security, MCP & Team | 35 min |
-| — | Wrap-up & Q&A | 10 min |
+| - | Wrap-up & Q&A | 10 min |
 
 ---
 
-# The CV Builder — Live Tour
+# The CV Builder. Live Tour
 
 ```
 Cmd+L → Agent → /overview diagrams spec

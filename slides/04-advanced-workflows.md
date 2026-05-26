@@ -25,7 +25,7 @@ style: |
 
 ---
 
-# 4.1 — Prompt Engineering
+# 4.1. Prompt Engineering
 
 ## STAR
 
@@ -37,7 +37,7 @@ style: |
 
 ---
 
-# 4.2 — Rules vs. Skills
+# 4.2. Rules vs. Skills
 
 ```
 Rules  → how to behave       (.cursor/rules/)
@@ -46,7 +46,7 @@ Skills → what workflow to run (.cursor/skills/)
 
 ---
 
-# 4.2 — Demo: Spec-Kit Chain
+# 4.2. Demo: Spec-Kit Chain
 
 ```
 /speckit-specify → spec.md
@@ -57,7 +57,7 @@ Skills → what workflow to run (.cursor/skills/)
 
 ---
 
-# 4.3 — Spec-Kit Artifacts
+# 4.3. Spec-Kit Artifacts
 
 ```
 specs/001-resume-builder/
@@ -71,7 +71,7 @@ Every diff traces to a task → FR → user story.
 
 ---
 
-# 4.4 — MCP
+# 4.4. MCP
 
 ```
 Cursor ←→ MCP Server ←→ External System
@@ -82,7 +82,7 @@ Cursor ←→ MCP Server ←→ External System
 
 ---
 
-# 4.5 — Automations & Jira
+# 4.5. Automations & Jira
 
 ```
 Jira ticket → Cursor agent → PR → Bug Bot → human review
@@ -90,7 +90,7 @@ Jira ticket → Cursor agent → PR → Bug Bot → human review
 
 ---
 
-# 4.6 — Security
+# 4.6. Security
 
 | Plan | Data retained? |
 |------|---------------|
@@ -102,7 +102,7 @@ Jira ticket → Cursor agent → PR → Bug Bot → human review
 
 ---
 
-# 4.7 — What to Commit
+# 4.7. What to Commit
 
 ```
 .cursor/
@@ -119,7 +119,7 @@ Jira ticket → Cursor agent → PR → Bug Bot → human review
 # Exercise 5
 
 **Prompt quality, security review, Spec-Kit chain, MCP**
-→ `exercises/README.md § 5a–5f`
+→ `exercises/README.md § 5a-5f`
 
 ---
 
