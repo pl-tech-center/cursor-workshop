@@ -45,7 +45,7 @@ Cursor doesn't just complete what you're typing — it watches your edits and pr
 - If autocomplete is consistently wrong, check your codebase index status — a stale or incomplete index degrades prediction quality
 - For multi-cursor edits, Cursor predicts the next-edit per cursor position — combine multi-cursor with Tab for batch renaming without regex
 
-### Live demo (using the CV Builder app)
+### Demo
 ```
 1. Open src/lib/types.ts → add a new field `employmentType: 'full-time' | 'part-time' | 'contract' | 'freelance' | 'internship'` to the ExperienceEntry interface
    → Watch Cursor suggest updates everywhere ExperienceEntry is constructed:
@@ -241,7 +241,7 @@ Is it large/risky?                 → Plan mode → review → execute
 - Agent mode queues follow-up messages: submit your next instruction while the agent is busy and it runs automatically when the current task finishes. Drag to reorder queued messages.
 - Built-in sub-agents (Explore, Bash, Browser) select their model automatically — they use faster models by default for cost efficiency. Custom sub-agents inherit the parent's model unless you override with the `model` field.
 
-### Demo (using the CV Builder app)
+### Demo
 ```
 1. Ask mode: "How does generateLatex assemble sections into the final document?"
    → follow-up: "What happens if an optional section returns an empty string — does it leave a blank line?"
