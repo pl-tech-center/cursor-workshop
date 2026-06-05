@@ -632,9 +632,11 @@ Customise worktree setup (install deps, copy `.env`, run migrations) via **`.cur
 The manual approach still works and gives you full control:
 
 ```bash
-git worktree add ../cv-builder-compact-mode feature/compact-mode
+git worktree add -b feature/compact-mode ../cv-builder-compact-mode
 cursor ../cv-builder-compact-mode
 ```
+
+`-b` creates the branch; `git worktree add <path> feature/compact-mode` fails if that branch does not exist yet.
 
 Now you have:
 ```
@@ -657,7 +659,7 @@ Both run simultaneously. Neither touches the other's files.
 The pattern:
 ```
 1. Break the feature into 3-4 independent pieces
-2. /worktree per piece (or git worktree add ../cv-builder-piece-N feature/cv-piece-N)
+2. /worktree per piece (or `git worktree add -b feature/cv-piece-N ../cv-builder-piece-N`)
 3. Run an agent in each worktree with a focused scope
 4. Each piece → one PR → fast review → merge
 ```
@@ -863,7 +865,7 @@ This solves the "works on my machine" problem for cloud agents — they run in t
 Same workflow with **local Agent in a worktree** when Cloud is unavailable:
 
 ```
-1. /worktree (or: git worktree add ../cv-builder-tests feature/test-coverage)
+1. /worktree (or: `git worktree add -b feature/test-coverage ../cv-builder-tests`)
 2. In the worktree chat — local Agent:
    "Audit @src/lib/ — for every exported function without a corresponding test in @tests/unit/,
     add vitest cases.

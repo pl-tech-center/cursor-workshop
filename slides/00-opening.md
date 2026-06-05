@@ -20,22 +20,21 @@ style: |
 
 <!-- _class: title -->
 
-# Cursor Workshop
-
-## From ad-hoc usage to deliberate, high-leverage workflows
+# Decompressing Together with Cursor
 
 ---
 
 # Agenda
 
-| # | Topic | Duration |
-|---|-------|----------|
-| 0 | Alignment + CV Builder tour | 5 min |
-| 1 | Core Features: Power Patterns | 25 min |
-| 2 | Context & Codebase Intelligence | 35 min |
-| 3 | Agentic Coding, Sub-agents & Parallelism | 45 min |
-| 4 | Skills, Spec-Kit, Security, MCP & Team | 35 min |
-| - | Wrap-up & Q&A | 10 min |
+1. **Opening** — alignment + CV Builder tour
+2. **Core Features:** Power Patterns
+3. *Break*
+4. **Context & Codebase Intelligence**
+5. *Break*
+6. **Agentic Coding, Sub-agents & Parallelism**
+7. *Break*
+8. **Skills, Spec-Kit, Security, MCP & Team**
+9. **Wrap-up & Q&A**
 
 ---
 
