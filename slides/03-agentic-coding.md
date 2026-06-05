@@ -310,15 +310,62 @@ prompt ───►├── worktree 2 (GPT)
 
 ---
 
-# 3.6. Cloud Agents (optional)
+# 3.6. Cloud Agents — what they are
 
-**Not on every laptop** (plan, privacy mode, org policy). No Cloud toggle? Skip the live demo.
+**Two places the agent can run**
 
+| | **Local Agent** (default) | **Cloud Agent** (optional) |
+|---|---|---|
+| Runs on | Your laptop, open folder | Isolated **Ubuntu VM** (Docker) with a repo checkout |
+| You can | Watch diffs live, iterate fast | **Close the lid** — job keeps running |
+| Setup | `.cursor/worktrees.json` | `.cursor/environment.json` |
+| Result | Edits in your workspace | Branch + PR (or pull back to local) |
+
+Cloud = same *agent loop* (read files, run tests, commit) — different **machine**.
+
+
+---
+
+# 3.6. Cloud Agents — when & how
+
+**Use cloud when the task is long and self-contained**
+- 15+ minutes: refactors, bulk tests, migrations
+- Overnight or while you're in meetings
+- Clean environment: `npm ci` + full test suite (like CI)
+
+**Start (if you see the Cloud toggle in Agent chat)**
 ```
-When enabled:  Cloud toggle → VM runs while laptop sleeps
-Workshop path: /worktree + local Agent (same idea, stays on machine)
-Also:          /multitask, queued Agent messages
+Cloud ON → describe the goal → Submit → review when notified
 ```
+Also from: Agents Window, cursor.com/agents, Slack, GitHub, Linear
+
+**Configure the VM** — commit `.cursor/environment.json`:
+```json
+{ "install": "npm ci && npm run download:tex-assets" }
+```
+Secrets → **dashboard** only (never in `environment.json`).
+
+**Cannot do:** hit your local dev server, VPN-only DB, or files outside the repo.
+
+---
+
+# 3.6. No Cloud toggle? Same goal, local path
+
+**Normal in this workshop** — privacy mode, org policy, or plan tier often hides Cloud.
+
+| You want… | Local equivalent |
+|---|---|
+| Long task without touching `main` | `/worktree` + Agent in isolated checkout |
+| Several tasks at once | `/multitask` or manual `git worktree` + second window |
+| Queue work while one agent runs | Send the next message — it queues |
+| Compare models on the same task | `/best-of-n` (local worktrees) |
+
+**Same orchestration pattern**
+```
+/worktree → Agent: "audit @tests/unit/ — add missing generator tests, npm test until green, commit"
+→ keep coding in main window → /apply-worktree when happy
+```
+Cloud version: identical prompt, but the VM runs after you walk away.
 
 ---
 
@@ -338,7 +385,7 @@ Also:          /multitask, queued Agent messages
 5. **Sub-agents**. Context isolation + parallelism.
 6. **Worktrees**. `/worktree` for isolation. `/apply-worktree` to merge.
 7. **Best-of-N**. `/best-of-n` same task across models.
-8. **Cloud Agents** (if enabled). Else worktree + local Agent for long tasks.
+8. **Cloud Agents** = agent on a remote VM (survives sleep). No toggle? `/worktree` + local Agent.
 
 ---
 
