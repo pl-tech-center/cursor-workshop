@@ -1,7 +1,4 @@
-# Cursor Workshop Poll — v2 (Suggested Questions)
-
-*Replaces the original 6-question poll. Designed to produce actionable data for tailoring the workshop.*
-
+# Cursor Workshop Poll — v2 
 ---
 
 **Intro text:**
